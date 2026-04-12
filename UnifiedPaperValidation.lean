@@ -461,7 +461,7 @@ theorem full_paper_capstone
     -- progression_gap_sum (Lemma 5)
     (∑ k ∈ Finset.filter (fun k => x_wgd k = false) Finset.univ,
         (WitnessGameDrift.batchMeanX (Function.update x_wgd k true) p_wgd - WitnessGameDrift.batchMeanX x_wgd p_wgd) ≤ -d_wgd) ∧
-    -- unconditional_trap_runtime (Theorem 9)
+    -- exponential_bound_exists (Theorem 9)
     (∃ T_lower : ℝ, T_lower > 0 ∧ T_lower ≥ Real.exp ((1 : ℝ) * ((n_wgd : ℝ) - 1))) ∧
     -- batch_mean_misranking (Proposition 3)
     (∃ k : Fin n_wgd,
@@ -536,18 +536,18 @@ theorem full_paper_capstone
   · exact WitnessGameDrift.C_k_nonneg hn_wgd x_wgd k_wgd
   -- 21. progression_gap_sum (Lemma 5)
   · exact WitnessGameDrift.progression_gap_sum hn_wgd x_wgd p_wgd hp_nonneg_wgd hp_sum_wgd d_wgd hd_wgd hd_ge_2_wgd
-  -- 22. unconditional_trap_runtime (Theorem 9)
-  · exact WitnessGameDrift.unconditional_trap_runtime n_wgd hn_wgd
+  -- 22. exponential_bound_exists (Theorem 9 precondition)
+  · exact WitnessGameDrift.exponential_bound_exists n_wgd hn_wgd
   -- 23. batch_mean_misranking (Proposition 3)
   · exact WitnessGameDrift.batch_mean_misranking hn_wgd_5 p_wgd hp_nonneg_wgd hp_sum_gt_wgd
   -- 24. r_local_offset_bound (Lemma 3)
   · exact RLocalGames.r_local_offset_bound G_rl x_rl x'_rl j_rl h_diff_rl K_rl hK_rl ys_rl
   -- 25. r_local_alignment (Theorem 7)
   · exact RLocalGames.r_local_alignment G_rl x_rl x'_rl j_rl h_diff_rl h_gap_rl h_eps_rl K_rl hK_rl ys_rl
-  -- 26. r_local_runtime_bound (Theorem 8)
-  · exact RLocalGames.r_local_runtime_bound n_rl r_rl epsilon_rl lambda_rl h_n_rl h_r_rl h_eps_rl_bound h_lambda_rl
-  -- 27. r_local_tightness (Proposition 1)
-  · exact RLocalGames.r_local_tightness n_rl r_rl epsilon_rl h_r_rl h_eps_tight
+  -- 26. r_local_drift_constant_positivity (Theorem 8 precondition)
+  · exact RLocalGames.r_local_drift_constant_positivity n_rl r_rl epsilon_rl lambda_rl h_n_rl h_r_rl h_eps_rl_bound h_lambda_rl
+  -- 27. r_local_game_exists_at_threshold (Proposition 1 existence)
+  · exact RLocalGames.r_local_game_exists_at_threshold n_rl r_rl epsilon_rl h_r_rl h_eps_tight
   -- 28. tight_sample_lower_bound (Theorem 4: Le Cam)
   · exact LeCamLowerBound.tight_sample_lower_bound n_lcam hn_lcam epsilon_lcam B_lcam h_eps_pos_lcam h_eps_bound_lcam hB_pos_lcam
 

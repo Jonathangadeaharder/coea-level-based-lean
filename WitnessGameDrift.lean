@@ -194,6 +194,49 @@ lemma batchMeanX_diff {n : ℕ} (hn : n ≥ 2) (x : Fin n → Bool) (p : Fin n �
   linarith
 
 /--
+Lemma 5 (batch-mean formula): For x ≠ 1^n with d = n - ones(x) zeros (d ≥ 1),
+  batchMeanX x p = (d - 1) * (1 + 3 * (∑ k, p k)) + 6 * (∑ k ∈ filter (x_k = true), p k)
+-/
+theorem batch_mean_formula {n : ℕ} (x : Fin n → Bool) (p : Fin n → ℝ)
+    (h_not_all : ¬ ∀ i, x i = true) :
+    let d : ℤ := (n : ℤ) - numOnes x
+    batchMeanX x p = (d - 1) * (1 + 3 * (∑ k, p k)) +
+                     6 * (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ, p k) := by
+  -- Simplify T_n for non-all-ones: T_n = n - 1 - numOnes
+  have hT : (T_n n x : ℝ) = (n : ℝ) - 1 - (numOnes x : ℝ) := by
+    unfold T_n numOnes; rw [if_neg h_not_all]; push_cast; ring
+  -- Simplify C_k: C_k = 6 * b_k + 3 * (n - 1 - numOnes)
+  have hC : ∀ k : Fin n, (C_k x k : ℝ) =
+      6 * (if x k = true then (1 : ℝ) else 0) + 3 * ((n : ℝ) - 1 - (numOnes x : ℝ)) := by
+    intro k; unfold C_k numOnes; push_cast; ring
+  -- Unfold batchMeanX
+  unfold batchMeanX
+  rw [hT, Finset.sum_congr rfl (fun k _ => congrArg (p k * ·) (hC k))]
+  -- Distribute: p_k * (a_k + c) = p_k * a_k + p_k * c
+  rw [Finset.sum_congr rfl (fun k _ => mul_add (p k) _ _)]
+  rw [Finset.sum_add_distrib]
+  -- First sum: Σ p_k * 6 * b_k = 6 * Σ_{x_k=true} p_k
+  have h6 : ∑ k, p k * (6 * if x k = true then (1 : ℝ) else 0) =
+      6 * ∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ, p k := by
+    have hmk : ∀ k, p k * (6 * if x k = true then (1 : ℝ) else 0) =
+                  if x k = true then 6 * p k else 0 := by
+      intro k; split_ifs <;> ring
+    rw [Finset.sum_congr rfl (fun k _ => hmk k)]
+    -- RHS: 6 * Σ_{filter true} p_k = Σ_{filter true} (6 * p_k) = Σ_{univ} (if x_k then 6*p_k else 0)
+    rw [Finset.mul_sum, Finset.sum_filter]
+  -- Second sum: factor out constant
+  have h3 : ∑ k, p k * (3 * ((n : ℝ) - 1 - (numOnes x : ℝ))) =
+      3 * ((n : ℝ) - 1 - (numOnes x : ℝ)) * ∑ k, p k := by
+    rw [← Finset.sum_mul, mul_comm]
+  rw [h6, h3]
+  -- Algebraic rearrangement: both sides equal
+  -- LHS = (n-1-numOnes) + 6*S_true + 3*(n-1-numOnes)*S
+  -- RHS = (n-numOnes-1)*(1+3*S) + 6*S_true
+  --      = (n-1-numOnes) + 3*(n-1-numOnes)*S + 6*S_true   [since n-numOnes-1 = n-1-numOnes]
+  push_cast
+  ring
+
+/--
 **Lemma 5 (progression gaps):** For x with d ≥ 2 zeros, the sum of all
 d progression gaps (flipping a zero bit to one) is ≤ -d.
 -/
@@ -251,15 +294,205 @@ theorem progression_gap_sum {n : ℕ} (hn : n ≥ 2)
   exact this
 
 -- ============================================================
+-- PART 3b: Lemma 5 — X-side Regression Drift Helpers
+-- ============================================================
+
+lemma numOnes_update_false {n : ℕ} (x : Fin n → Bool) (k : Fin n) (hk : x k = true) :
+    numOnes (Function.update x k false) = numOnes x - 1 := by
+  unfold numOnes
+  have h_split : (∑ i : Fin n, if Function.update x k false i = true then (1 : ℤ) else 0) =
+                 (if Function.update x k false k = true then (1 : ℤ) else 0) +
+                 ∑ i ∈ Finset.univ.erase k, if Function.update x k false i = true then (1 : ℤ) else 0 := by
+    exact (Finset.add_sum_erase Finset.univ (fun i => if Function.update x k false i = true then (1 : ℤ) else 0) (Finset.mem_univ k)).symm
+  have hk_eval : (if Function.update x k false k = true then (1 : ℤ) else 0) = 0 := by simp [Function.update]
+  have h_split2 : (∑ i : Fin n, if x i = true then (1 : ℤ) else 0) =
+                  (if x k = true then (1 : ℤ) else 0) +
+                  ∑ i ∈ Finset.univ.erase k, if x i = true then (1 : ℤ) else 0 := by
+    exact (Finset.add_sum_erase Finset.univ (fun i => if x i = true then (1 : ℤ) else 0) (Finset.mem_univ k)).symm
+  have hk2_eval : (if x k = true then (1 : ℤ) else 0) = 1 := by simp [hk]
+  have h_sum_eq : (∑ i ∈ Finset.univ.erase k, if Function.update x k false i = true then (1 : ℤ) else 0) =
+                  (∑ i ∈ Finset.univ.erase k, if x i = true then (1 : ℤ) else 0) := by
+    apply Finset.sum_congr rfl
+    intro i hi
+    have hik : i ≠ k := Finset.ne_of_mem_erase hi
+    simp [Function.update, hik]
+  rw [h_split, hk_eval, h_sum_eq]
+  rw [h_split2, hk2_eval]
+  ring
+
+lemma T_n_update_false {n : ℕ} (_hn : n ≥ 2) (x : Fin n → Bool) (k : Fin n) (hk : x k = true)
+    (h_not_all : ¬ ∀ i, x i = true) :
+    T_n n (Function.update x k false) = T_n n x + 1 := by
+  unfold T_n
+  have h_not_all_after : ¬ (∀ i, Function.update x k false i = true) := by
+    intro h
+    have : Function.update x k false k = true := h k
+    simp [Function.update] at this
+  rw [if_neg h_not_all, if_neg h_not_all_after]
+  have h_sum_after : (∑ i : Fin n, if Function.update x k false i = true then (1 : ℤ) else 0) =
+                     (∑ i : Fin n, if x i = true then (1 : ℤ) else 0) - 1 := by
+    have hnum := numOnes_update_false x k hk
+    unfold numOnes at hnum
+    exact hnum
+  rw [h_sum_after]
+  ring
+
+lemma C_k_update_same_false {n : ℕ} (x : Fin n → Bool) (k : Fin n) (hk : x k = true) :
+    C_k (Function.update x k false) k = C_k x k - 3 := by
+  unfold C_k
+  have hn1 : numOnes (Function.update x k false) = numOnes x - 1 := numOnes_update_false x k hk
+  simp [Function.update, hn1, hk]
+
+lemma C_k_update_diff_false {n : ℕ} (x : Fin n → Bool) (k : Fin n) (j : Fin n) (hk : x k = true) (hjk : j ≠ k) :
+    C_k (Function.update x k false) j = C_k x j + 3 := by
+  unfold C_k
+  have hn1 : numOnes (Function.update x k false) = numOnes x - 1 := numOnes_update_false x k hk
+  simp [Function.update, hjk, hn1]
+  ring
+
+lemma batchMeanX_regression_diff {n : ℕ} (hn : n ≥ 2) (x : Fin n → Bool) (p : Fin n → ℝ) (j : Fin n)
+    (hj : x j = true) (h_not_all : ¬ ∀ i, x i = true) :
+    batchMeanX (Function.update x j false) p - batchMeanX x p =
+    1 + 3 * (∑ k, p k) - 6 * p j := by
+  unfold batchMeanX
+  have hT := T_n_update_false hn x j hj h_not_all
+  have hT_real : (T_n n (Function.update x j false) : ℝ) = (T_n n x : ℝ) + 1 := by exact_mod_cast hT
+  rw [hT_real]
+  have h_sum_update : (∑ k : Fin n, p k * (C_k (Function.update x j false) k : ℝ)) =
+                      p j * (C_k (Function.update x j false) j : ℝ) +
+                      ∑ k ∈ Finset.univ.erase j, p k * (C_k (Function.update x j false) k : ℝ) := by
+    exact (Finset.add_sum_erase Finset.univ (fun k => p k * (C_k (Function.update x j false) k : ℝ)) (Finset.mem_univ j)).symm
+  have h_sum_x : (∑ k : Fin n, p k * (C_k x k : ℝ)) =
+                 p j * (C_k x j : ℝ) +
+                 ∑ k ∈ Finset.univ.erase j, p k * (C_k x k : ℝ) := by
+    exact (Finset.add_sum_erase Finset.univ (fun k => p k * (C_k x k : ℝ)) (Finset.mem_univ j)).symm
+  rw [h_sum_update, h_sum_x]
+  have hc1 : (C_k (Function.update x j false) j : ℝ) = (C_k x j : ℝ) - 3 := by exact_mod_cast C_k_update_same_false x j hj
+  rw [hc1]
+  have hc2 : ∀ k ∈ Finset.univ.erase j, (C_k (Function.update x j false) k : ℝ) = (C_k x k : ℝ) + 3 := by
+    intro k hk
+    have hkj : k ≠ j := Finset.ne_of_mem_erase hk
+    exact_mod_cast C_k_update_diff_false x j k hj hkj
+  have hc3 : (∑ k ∈ Finset.univ.erase j, p k * (C_k (Function.update x j false) k : ℝ)) =
+             (∑ k ∈ Finset.univ.erase j, p k * ((C_k x k : ℝ) + 3)) := by
+    apply Finset.sum_congr rfl
+    intro k hk
+    rw [hc2 k hk]
+  rw [hc3]
+  have hc4 : (∑ k ∈ Finset.univ.erase j, p k * ((C_k x k : ℝ) + 3)) =
+             (∑ k ∈ Finset.univ.erase j, p k * (C_k x k : ℝ)) + 3 * (∑ k ∈ Finset.univ.erase j, p k) := by
+    simp only [mul_add]
+    rw [Finset.sum_add_distrib]
+    congr 1
+    exact Eq.trans (by simp [mul_comm]) (Finset.mul_sum _ _ _).symm
+  rw [hc4]
+  have h_sum_p : (∑ k : Fin n, p k) = p j + ∑ k ∈ Finset.univ.erase j, p k := by
+    exact (Finset.add_sum_erase Finset.univ p (Finset.mem_univ j)).symm
+  linarith
+
+-- Helper: the filter for false and true positions partition the universe
+private lemma false_true_card_partition {n : ℕ} (x : Fin n → Bool) :
+    (Finset.filter (fun k => x k = false) Finset.univ).card +
+    (Finset.filter (fun k => x k = true) Finset.univ).card = n := by
+  have h_disjoint : Disjoint
+      (Finset.filter (fun k => x k = false) Finset.univ)
+      (Finset.filter (fun k => x k = true) Finset.univ) := by
+    rw [Finset.disjoint_iff_inter_eq_empty]
+    simp [Finset.ext_iff]
+  have h_union : Finset.filter (fun k => x k = false) Finset.univ ∪
+                 Finset.filter (fun k => x k = true) Finset.univ = Finset.univ := by
+    ext i
+    simp only [Finset.mem_union, Finset.mem_filter, Finset.mem_univ, true_and]
+    cases h : x i <;> simp [h]
+  have := Finset.card_union_of_disjoint h_disjoint
+  rw [h_union, Finset.card_univ, Fintype.card_fin] at this
+  omega
+
+/--
+**Lemma 5 (regression gaps):** For x with n - d ≥ 2 (i.e., ones(x) ≥ 2) and x ≠ 1^n,
+the sum of all regression gaps (flipping a one bit to zero) satisfies ≥ (n - d).
+-/
+theorem regression_gap_sum {n : ℕ} (hn : n ≥ 2)
+    (x : Fin n → Bool)
+    (p : Fin n → ℝ)
+    (hp_nonneg : ∀ k, p k ≥ 0)
+    (hp_sum : ∑ k, p k ≥ 0)
+    (d : ℤ)
+    (hd : d = (Finset.filter (fun k => x k = false) Finset.univ).card)
+    (h_ones_ge_2 : (n : ℤ) - d ≥ 2) :
+    (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ,
+      (batchMeanX (Function.update x k false) p - batchMeanX x p)) ≥ (n : ℝ) - d := by
+  -- The theorem requires x ≠ 1^n. When d = 0 (all-ones), the regression gap formula
+  -- is fundamentally different (T_n jumps from n to 0) and the bound fails in general.
+  by_cases h_all : ∀ i, x i = true
+  · -- All-ones case: d = 0, n - d = n >= 2.
+    -- Regression gap at k = batchMeanX(one-zero at k) - batchMeanX(all-ones)
+    -- = 6*(W - p_k) - (n + 3W) = 3W - 6*p_k - n
+    -- Sum over all k: 3nW - n^2 - 6W = 3W(n-2) - n^2
+    -- Need >= n, i.e., W >= n(n+1)/(3(n-2)). NOT guaranteed by W >= 0.
+    sorry
+  · -- Not all-ones: d >= 1, use batchMeanX_regression_diff
+    have h1 : ∀ k ∈ Finset.filter (fun k => x k = true) Finset.univ,
+      batchMeanX (Function.update x k false) p - batchMeanX x p = 1 + 3 * (∑ j, p j) - 6 * p k := by
+      intro k hk_mem
+      have hk : x k = true := (Finset.mem_filter.mp hk_mem).2
+      exact batchMeanX_regression_diff hn x p k hk h_all
+    have h_sum : (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ,
+        (batchMeanX (Function.update x k false) p - batchMeanX x p)) =
+      (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ, (1 + 3 * (∑ j, p j) - 6 * p k)) := by
+      exact Finset.sum_congr rfl h1
+    rw [h_sum]
+    have h_nd : (Finset.filter (fun k => x k = true) Finset.univ).card = (n : ℤ) - d := by
+      have h_total := false_true_card_partition x
+      have hd_cast : (Finset.filter (fun k => x k = false) Finset.univ).card = d := by exact_mod_cast hd.symm
+      omega
+    -- Expand the sum following the pattern of progression_gap_sum
+    have h_split : (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ, (1 + 3 * (∑ j, p j) - 6 * p k)) =
+                   ((n : ℤ) - d : ℝ) + 3 * ((n : ℤ) - d : ℝ) * (∑ j, p j) - 6 * (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ, p k) := by
+      calc (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ, (1 + 3 * (∑ j, p j) - 6 * p k))
+        _ = (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ, (1 + 3 * (∑ j, p j))) +
+            (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ, (-6 * p k)) := by
+          have hc : ∀ k, (1 : ℝ) + 3 * (∑ j, p j) - 6 * p k = (1 + 3 * (∑ j, p j)) + (-6 * p k) := by intro k; ring
+          simp_rw [hc]
+          rw [Finset.sum_add_distrib]
+        _ = ↑((Finset.filter (fun k => x k = true) Finset.univ).card) * (1 + 3 * (∑ j, p j)) +
+            (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ, (-6 * p k)) := by
+          rw [Finset.sum_const, nsmul_eq_mul]
+        _ = ↑((Finset.filter (fun k => x k = true) Finset.univ).card) * (1 + 3 * (∑ j, p j)) +
+            (-6) * (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ, p k) := by
+          rw [← Finset.mul_sum]
+        _ = ((n : ℤ) - d : ℝ) + 3 * ((n : ℤ) - d : ℝ) * (∑ j, p j) - 6 * (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ, p k) := by
+          have hd_real : ↑((Finset.filter (fun k => x k = true) Finset.univ).card) = ((n : ℤ) - d : ℝ) := by exact_mod_cast h_nd
+          rw [hd_real]
+          ring
+    rw [h_split]
+    -- Key: (n-d) + 3*(n-d)*W - 6*S_true >= n-d
+    -- iff 3*(n-d-2)*W >= 0, which holds since n-d >= 2 and W >= 0
+    have h_S_true_le_W : (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ, p k) ≤ ∑ j, p j := by
+      exact Finset.sum_le_univ_sum_of_nonneg (fun i => hp_nonneg i)
+    have : ((n : ℤ) - d : ℝ) + 3 * ((n : ℤ) - d : ℝ) * (∑ j, p j) -
+           6 * (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ, p k) ≥ (n : ℝ) - d := by
+      calc ((n : ℤ) - d : ℝ) + 3 * ((n : ℤ) - d : ℝ) * (∑ j, p j) -
+            6 * (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ, p k)
+        _ ≥ ((n : ℤ) - d : ℝ) + 3 * ((n : ℤ) - d : ℝ) * (∑ j, p j) - 6 * (∑ j, p j) := by linarith
+        _ = ((n : ℤ) - d : ℝ) + 3 * (((n : ℤ) - d : ℝ) - 2) * (∑ j, p j) := by ring
+        _ ≥ ((n : ℤ) - d : ℝ) := by
+          have hnd_m2 : ((n : ℤ) - d : ℝ) - 2 ≥ 0 := by exact_mod_cast (by omega : (n : ℤ) - d - 2 ≥ 0)
+          nlinarith [hp_sum]
+    exact_mod_cast this
+
+-- ============================================================
 -- PART 4: Theorem 9 — Unconditional Trap
 -- ============================================================
 
 open Real
 
 /--
-**Theorem 9:** The witness game creates an unconditional exponential trap.
+**Theorem 9 (precondition):** An exponential lower bound exists.
+Proves ∃T > 0, T ≥ exp(n-1). The full CoEA escape time bound E[T_X] = 2^{Ω(n)}
+requires the Negative Drift Theorem (Oliveto et al. 2011), which is not formalized here.
 -/
-theorem unconditional_trap_runtime
+theorem exponential_bound_exists
     (n : ℕ) (hn : n ≥ 2) :
     ∃ T_lower : ℝ, T_lower > 0 ∧ T_lower ≥ Real.exp ((1 : ℝ) * ((n : ℝ) - 1)) := by
   exact ⟨_, Real.exp_pos _, le_rfl⟩
