@@ -26,7 +26,7 @@ jobs:
           path: |
             .lake/packages/mathlib
             .lake/build
-          key: lake-${{ runner.os }}-${{ hashFiles('lakefile', 'lean-toolchain') }}
+          key: lake-${{ runner.os }}-${{ hashFiles('lakefile.lean', 'lake-manifest.json', 'lean-toolchain') }}
           restore-keys: lake-${{ runner.os }}-
 
       - name: Build
@@ -50,7 +50,7 @@ jobs:
       - name: Check for axiom declarations
         run: |
           echo "::group::Searching for axiom declarations"
-          FOUND=$(grep -rn '^axiom ' --include='*.lean' . \
+          FOUND=$(grep -rnE '^\s*(private\s+|protected\s+|noncomputable\s+)*axiom\b' --include='*.lean' . \
             | grep -v '\.lake/packages/' \
             || true)
           if [ -n "$FOUND" ]; then
