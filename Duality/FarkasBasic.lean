@@ -1,0 +1,168 @@
+import Mathlib.Algebra.Order.Sum
+import Mathlib.Algebra.Order.Group.PosPart
+import Mathlib.LinearAlgebra.Matrix.DotProduct
+import Mathlib.Data.Matrix.ColumnRowPartitioned
+import Mathlib.LinearAlgebra.Matrix.ToLin
+import Duality.FarkasBartl
+
+
+
+/- Let's move from linear maps to matrices, which give more familiar
+(albeit less general) formulations of the theorems of alternative. -/
+
+variable {I J F : Type*} [Fintype I] [Fintype J] [Field F] [LinearOrder F] [IsStrictOrderedRing F]
+
+
+instance Field.toLinearOrderedDivisionRing {F : Type*} [Field F] [LinearOrder F] [IsStrictOrderedRing F] :
+    LinearOrderedDivisionRing F where
+
+open scoped Matrix
+
+macro "finishit" : tactic => `(tactic| -- should be `private macro` which Lean does not allow
+  unfold Matrix.mulVec Matrix.vecMul dotProduct <;>
+  simp_rw [Finset.sum_mul] <;> rw [Finset.sum_comm] <;>
+  congr <;> ext <;> congr <;> ext <;> ring)
+
+/-- A system of linear equalities over nonnegative variables has a solution if and only if
+we cannot obtain a contradiction by taking a linear combination of the inequalities. -/
+theorem equalityFarkas (A : Matrix I J F) (b : I → F) :
+    (∃ x : J → F, 0 ≤ x ∧ A *ᵥ x = b) ≠ (∃ y : I → F, 0 ≤ Aᵀ *ᵥ y ∧ b ⬝ᵥ y < 0) := by
+  convert
+    coordinateFarkasBartl Aᵀ.mulVecLin ⟨⟨(b ⬝ᵥ ·), dotProduct_add b⟩, (dotProduct_smul · b)⟩
+      using 3
+  · constructor <;> intro ⟨hx, hAx⟩ <;> refine ⟨hx, ?_⟩
+    · intro
+      simp
+      rw [←hAx]
+      finishit
+    · simp at hAx
+      apply dotProduct_eq
+      intro w
+      rw [←hAx w]
+      finishit
+
+/- The following two theorems could be given in much more generality.
+In our work, however, this is the only setting we provide.
+This special case of the Fredholm alternative is not our main focus
+but a byproduct of the other theorems we prove.
+You can use `basicLinearAlgebra_lt` to gain intuition for understanding
+what `equalityFarkas` says. -/
+
+/-- A system of linear equalities has a solution if and only if
+we cannot obtain a contradiction by taking a linear combination of the equalities. -/
+theorem basicLinearAlgebra_lt (A : Matrix I J F) (b : I → F) :
+    (∃ x : J → F, A *ᵥ x = b) ≠ (∃ y : I → F, Aᵀ *ᵥ y = 0 ∧ b ⬝ᵥ y < 0) := by
+  convert equalityFarkas (Matrix.fromCols A (-A)) b using 1
+  · constructor
+    · intro ⟨x, hAx⟩
+      use Sum.elim x⁺ x⁻
+      constructor
+      · rw [Sum.nonneg_elim_iff]
+        exact ⟨fun i => posPart_nonneg (x i), fun i => negPart_nonneg (x i)⟩
+      · calc
+          A.fromCols (-A) *ᵥ Sum.elim x⁺ x⁻ = A *ᵥ x⁺ + (-A) *ᵥ x⁻ := by rw [Matrix.fromCols_mulVec_sumElim]
+          _ = A *ᵥ x⁺ - A *ᵥ x⁻ := by rw [Matrix.neg_mulVec, sub_eq_add_neg]
+          _ = A *ᵥ (x⁺ - x⁻) := by rw [Matrix.mulVec_sub]
+          _ = A *ᵥ x := by congr; ext i; exact posPart_sub_negPart (x i)
+          _ = b := hAx
+    · intro ⟨x, _, hAx⟩
+      use x ∘ Sum.inl - x ∘ Sum.inr
+      calc
+        A *ᵥ (x ∘ Sum.inl - x ∘ Sum.inr) = A *ᵥ (x ∘ Sum.inl) - A *ᵥ (x ∘ Sum.inr) := by rw [Matrix.mulVec_sub]
+        _ = A *ᵥ (x ∘ Sum.inl) + (-A) *ᵥ (x ∘ Sum.inr) := by rw [Matrix.neg_mulVec, sub_eq_add_neg]
+        _ = A.fromCols (-A) *ᵥ x := by rw [Matrix.fromCols_mulVec]
+        _ = b := hAx
+  · constructor
+    · intro ⟨y, hAy, hby⟩
+      refine ⟨y, ?_, hby⟩
+      rw [Matrix.transpose_fromCols, Matrix.fromRows_mulVec, Sum.nonneg_elim_iff]
+      constructor
+      · rw [hAy]
+      · calc
+          (0 : J → F) = -(Aᵀ *ᵥ y) := by rw [hAy, neg_zero]
+          _ = (-A)ᵀ *ᵥ y := by rw [Matrix.transpose_neg, Matrix.neg_mulVec]
+        exact le_refl _
+    · intro ⟨y, hAy, hby⟩
+      refine ⟨y, ?_, hby⟩
+      rw [Matrix.transpose_fromCols, Matrix.fromRows_mulVec, Sum.nonneg_elim_iff] at hAy
+      obtain ⟨hAyp, hAyn⟩ := hAy
+      refine le_antisymm ?_ hAyp
+      rw [Pi.le_def] at hAyn ⊢
+      intro i
+      have h_neg := hAyn i
+      have h_simp : ((-A)ᵀ *ᵥ y) i = -((Aᵀ *ᵥ y) i) := by rw [Matrix.transpose_neg, Matrix.neg_mulVec, Pi.neg_apply]
+      rw [h_simp] at h_neg
+      exact nonpos_of_neg_nonneg h_neg
+
+/-- A system of linear equalities has a solution if and only if
+we cannot obtain a contradiction by taking a linear combination of the equalities;
+midly reformulated. -/
+theorem basicLinearAlgebra (A : Matrix I J F) (b : I → F) :
+    (∃ x : J → F, A *ᵥ x = b) ≠ (∃ y : I → F, Aᵀ *ᵥ y = 0 ∧ b ⬝ᵥ y ≠ 0) := by
+  convert basicLinearAlgebra_lt A b using 1
+  refine ⟨fun ⟨y, hAy, hby⟩ => ?_, by aesop⟩
+  if hlt : b ⬝ᵥ y < 0 then
+    aesop
+  else
+    use -y
+    change Aᵀ *ᵥ (-y) = 0 ∧ b ⬝ᵥ (-y) < 0
+    rw [Matrix.mulVec_neg, hAy, neg_zero, dotProduct_neg, neg_lt_zero]
+    refine ⟨rfl, ?_⟩
+    push Not at hlt
+    exact lt_of_le_of_ne hlt hby.symm
+
+/- Let's move to the "symmetric" variants now. They will also be used in the upcoming extended setting
+and in the upcoming theory of linear programming. -/
+
+/-- A system of linear inequalities over nonnegative variables has a solution if and only if
+we cannot obtain a contradiction by taking a nonnegative linear combination of the inequalities. -/
+theorem inequalityFarkas [DecidableEq I] (A : Matrix I J F) (b : I → F) :
+    (∃ x : J → F, 0 ≤ x ∧ A *ᵥ x ≤ b) ≠ (∃ y : I → F, 0 ≤ y ∧ 0 ≤ Aᵀ *ᵥ y ∧ b ⬝ᵥ y < 0) := by
+  let A' : Matrix I (I ⊕ J) F := Matrix.fromCols 1 A
+  convert equalityFarkas A' b using 1 <;> constructor
+  · intro ⟨x, hx, hAxb⟩
+    use Sum.elim (b - A *ᵥ x) x
+    constructor
+    · rw [Sum.nonneg_elim_iff]
+      refine ⟨?_, hx⟩
+      rw [Pi.le_def] at hAxb ⊢
+      intro i
+      rw [Pi.zero_apply, Pi.sub_apply]
+      exact sub_nonneg_of_le (hAxb i)
+    · aesop
+  · intro ⟨x, hx, hAxb⟩
+    use x ∘ Sum.inr
+    constructor
+    · intro
+      apply hx
+    · intro i
+      have hi := congr_fun hAxb i
+      simp [A', Matrix.mulVec, dotProduct, Matrix.fromCols] at hi
+      have h_nonneg : 0 ≤ ∑ x_1, (1 : Matrix I I F) i x_1 * x ◩x_1 := by
+        apply Fintype.sum_nonneg
+        intro j
+        apply mul_nonneg (Matrix.zero_le_one_elem _ _) (hx _)
+      rw [←hi]
+      apply le_add_of_nonneg_left h_nonneg
+  · intro ⟨y, hy, hAy, hby⟩
+    refine ⟨y, ?_, hby⟩
+    intro k
+    cases k with
+    | inl i => simpa [A', Matrix.neg_mulVec] using dotProduct_nonneg_of_nonneg (Matrix.zero_le_one_elem · i) hy
+    | inr j => apply hAy
+  · intro ⟨y, hAy, hby⟩
+    have h1Ay : 0 ≤ (Matrix.fromRows (1 : Matrix I I F) Aᵀ *ᵥ y)
+    · intro k
+      simp only [A', Matrix.transpose_fromCols, Matrix.transpose_one] at hAy
+      apply hAy
+    refine ⟨y, fun i : I => ?_, fun j : J => h1Ay ◪j, hby⟩
+    simpa using h1Ay ◩i
+
+/-- A system of linear inequalities over nonnegative variables has a solution if and only if
+we cannot obtain a contradiction by taking a nonnegative linear combination of the inequalities;
+midly reformulated. -/
+theorem inequalityFarkas_neg [DecidableEq I] (A : Matrix I J F) (b : I → F) :
+    (∃ x : J → F, 0 ≤ x ∧ A *ᵥ x ≤ b) ≠ (∃ y : I → F, 0 ≤ y ∧ -Aᵀ *ᵥ y ≤ 0 ∧ b ⬝ᵥ y < 0) := by
+  convert inequalityFarkas A b using 5
+  rw [Matrix.neg_mulVec, ←neg_zero]
+  constructor <;> intro hAx i <;> simpa using hAx i
