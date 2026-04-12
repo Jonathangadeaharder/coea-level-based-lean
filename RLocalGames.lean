@@ -158,10 +158,11 @@ theorem r_local_alignment {α β : Type _} (G : RLocalGame α β)
     linarith
   linarith
 
-/-- Theorem 8: r-local runtime bound.
-    Reframes the additive drift bound: there exists a positive constant c such that
-    c * n² * log(λ) > 0, where c = 1/(2(1-εr)) comes from the drift rate. -/
-theorem r_local_runtime_bound (n r : ℕ) (epsilon lambda : ℝ)
+/-- Theorem 8 (precondition): r-local drift constant positivity.
+    Proves the core algebraic fact that the drift constant c = 1/(2(1-εr)) > 0.
+    The full runtime bound E[T_X] = O(n log n) requires coupling with the
+    Level-Based Theorem (Corus et al. 2018), which is not formalized here. -/
+theorem r_local_drift_constant_positivity (n r : ℕ) (epsilon lambda : ℝ)
     (h_n : n ≥ 1) (h_r : r ≥ 1)
     (h_eps : epsilon < 1 / (r : ℝ)) (h_lambda : lambda > 1) :
     ∃ c : ℝ, c > 0 ∧ c * (n : ℝ)^2 * Real.log lambda > 0 := by
@@ -179,9 +180,10 @@ theorem r_local_runtime_bound (n r : ℕ) (epsilon lambda : ℝ)
   have h_log : 0 < Real.log lambda := Real.log_pos h_lambda
   positivity
 
-/-- Proposition 1: r-local tightness.
-    Constructs a zero-game to show such games exist at the threshold ε ≥ 1/r. -/
-theorem r_local_tightness (n r : ℕ) (epsilon : ℝ)
+/-- Proposition 1 (existence part): an r-local game exists at any ε ≥ 1/r.
+    Uses a trivial zero-game construction. The paper's full result (cyclic adversarial
+    trap that misranks all n progression pairs from 0^n) is proved on paper in the supplement. -/
+theorem r_local_game_exists_at_threshold (n r : ℕ) (epsilon : ℝ)
     (h_r : r ≥ 1)
     (h_eps : epsilon ≥ 1 / (r : ℝ)) :
     ∃ G : RLocalGame (Fin n → Bool) (Fin n → Bool),
