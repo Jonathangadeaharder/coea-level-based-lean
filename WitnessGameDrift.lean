@@ -419,24 +419,16 @@ theorem regression_gap_sum {n : ℕ} (hn : n ≥ 2)
     (hp_sum : ∑ k, p k ≥ 0)
     (d : ℤ)
     (hd : d = (Finset.filter (fun k => x k = false) Finset.univ).card)
-    (h_ones_ge_2 : (n : ℤ) - d ≥ 2) :
+    (h_ones_ge_2 : (n : ℤ) - d ≥ 2)
+    (h_not_all : ¬ ∀ i, x i = true) :
     (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ,
       (batchMeanX (Function.update x k false) p - batchMeanX x p)) ≥ (n : ℝ) - d := by
-  -- The theorem requires x ≠ 1^n. When d = 0 (all-ones), the regression gap formula
-  -- is fundamentally different (T_n jumps from n to 0) and the bound fails in general.
-  by_cases h_all : ∀ i, x i = true
-  · -- All-ones case: d = 0, n - d = n >= 2.
-    -- Regression gap at k = batchMeanX(one-zero at k) - batchMeanX(all-ones)
-    -- = 6*(W - p_k) - (n + 3W) = 3W - 6*p_k - n
-    -- Sum over all k: 3nW - n^2 - 6W = 3W(n-2) - n^2
-    -- Need >= n, i.e., W >= n(n+1)/(3(n-2)). NOT guaranteed by W >= 0.
-    sorry
-  · -- Not all-ones: d >= 1, use batchMeanX_regression_diff
+  -- Not all-ones: d >= 1, use batchMeanX_regression_diff
     have h1 : ∀ k ∈ Finset.filter (fun k => x k = true) Finset.univ,
       batchMeanX (Function.update x k false) p - batchMeanX x p = 1 + 3 * (∑ j, p j) - 6 * p k := by
       intro k hk_mem
       have hk : x k = true := (Finset.mem_filter.mp hk_mem).2
-      exact batchMeanX_regression_diff hn x p k hk h_all
+      exact batchMeanX_regression_diff hn x p k hk h_not_all
     have h_sum : (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ,
         (batchMeanX (Function.update x k false) p - batchMeanX x p)) =
       (∑ k ∈ Finset.filter (fun k => x k = true) Finset.univ, (1 + 3 * (∑ j, p j) - 6 * p k)) := by
