@@ -83,7 +83,7 @@ jobs:
 
           check_theorem() {
             local file="$1" name="$2" label="$3"
-            if grep -q "theorem $name" "$file"; then
+            if grep -qE "^[[:space:]]*(private[[:space:]]+|protected[[:space:]]+|noncomputable[[:space:]]+)*theorem[[:space:]]+${name}\\b" "$file"; then
               echo "  ✓ $label: $name"
             else
               echo "::error::$label missing: theorem $name not found in $file"
@@ -93,7 +93,7 @@ jobs:
 
           check_no_stub() {
             local file="$1" pattern="$2" label="$3"
-            if grep -q "$pattern" "$file"; then
+            if grep -qF "$pattern" "$file"; then
               echo "::error::$label still contains stub: $pattern"
               ERRORS=$((ERRORS + 1))
             else
@@ -148,4 +148,4 @@ jobs:
           echo "- **sorry count:** ${SORRY_COUNT}" >> $GITHUB_STEP_SUMMARY
           echo "- **axiom count:** ${AXIOM_COUNT}" >> $GITHUB_STEP_SUMMARY
           echo "- **admit count:** ${ADMIT_COUNT}" >> $GITHUB_STEP_SUMMARY
-          echo "- **required gap:** Proposition 1 (r_local_tightness_all_pairs_misranked)" >> $GITHUB_STEP_SUMMARY
+          echo "- **required theorem:** Proposition 1 (r_local_tightness_all_pairs_misranked)" >> $GITHUB_STEP_SUMMARY

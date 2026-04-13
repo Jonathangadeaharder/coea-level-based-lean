@@ -205,61 +205,24 @@ At ε = c/r with c > 1, a cyclic r-local game exists that misranks
 all n progression pairs from 0^n under the batch-mean evaluator.
 -/
 
-/-- Widen a Fin r value to Fin n when r ≤ n. -/
-private def widen {r n : ℕ} (hr : r ≤ n) (m : Fin r) : Fin n :=
-  ⟨(m : ℕ), Nat.lt_of_lt_of_le m.2 hr⟩
-
-private theorem widen_injective {r n : ℕ} (hr : r ≤ n) :
-    Function.Injective (widen hr) := by
-  intro a b h
-  simp only [widen, Fin.ext_iff] at h ⊢
-  exact h
-
-/-- Cyclic index set S_k = {k, k+1 mod n, ..., k+r-1 mod n}. -/
+/-- Cyclic index set S_k = {k, k+1 mod n, ..., k+r-1 mod n}.
+    Uses Fin.castLE to embed Fin r → Fin n (replacing the former `widen`). -/
 private def cyclicSet (n r : ℕ) (k : Fin n) (hr : r ≤ n) : Finset (Fin n) :=
-  (Finset.univ : Finset (Fin r)).image fun m => k + widen hr m
+  (Finset.univ : Finset (Fin r)).image fun m => k + Fin.castLE hr m
 
-/-- Key lemma: (k + a) % n = (k + b) % n → a = b for a, b < n. -/
+/-- Key lemma: k + a ≡ k + b (mod n) → a = b for a, b < n.
+    Uses the additive cancellation property of Fin n. -/
 private lemma mod_add_right_cancel {a b k n : ℕ} (hk : k < n) (ha : a < n) (hb : b < n)
     (h : (k + a) % n = (k + b) % n) : a = b := by
-  -- Use cases on whether k+a and k+b overflow n
-  by_cases ha_n : k + a < n
-  · have ha_mod := Nat.mod_eq_of_lt ha_n
-    by_cases hb_n : k + b < n
-    · have hb_mod := Nat.mod_eq_of_lt hb_n
-      rw [ha_mod, hb_mod] at h
-      omega
-    · -- k + a < n, k + b ≥ n
-      have hb_mod : (k + b) % n = k + b - n := by
-        have : k + b < 2 * n := by omega
-        rw [Nat.mod_eq_sub_mod (show n ≤ k + b by omega)]
-        exact Nat.mod_eq_of_lt (by omega)
-      rw [ha_mod, hb_mod] at h
-      omega
-  · -- k + a ≥ n
-    have ha_mod : (k + a) % n = k + a - n := by
-      have : k + a < 2 * n := by omega
-      rw [Nat.mod_eq_sub_mod (show n ≤ k + a by omega)]
-      exact Nat.mod_eq_of_lt (by omega)
-    by_cases hb_n : k + b < n
-    · -- k + a ≥ n, k + b < n
-      have hb_mod := Nat.mod_eq_of_lt hb_n
-      rw [ha_mod, hb_mod] at h
-      omega
-    · -- Both overflow
-      have hb_mod : (k + b) % n = k + b - n := by
-        have : k + b < 2 * n := by omega
-        rw [Nat.mod_eq_sub_mod (show n ≤ k + b by omega)]
-        exact Nat.mod_eq_of_lt (by omega)
-      rw [ha_mod, hb_mod] at h
-      omega
+  have h1 : (⟨k, hk⟩ + ⟨a, ha⟩ : Fin n) = (⟨k, hk⟩ + ⟨b, hb⟩ : Fin n) := Fin.ext h
+  exact Fin.ext_iff.mp (add_left_cancel h1)
 
 private theorem cyclicSet_card (n r : ℕ) (k : Fin n) (hr : r ≤ n) :
     (cyclicSet n r k hr).card = r := by
-  have h_inj : Function.Injective fun m : Fin r => k + widen hr m := by
+  have h_inj : Function.Injective fun m : Fin r => k + Fin.castLE hr m := by
     intro a b hab
     have h := congr_arg Fin.val hab
-    simp only [Fin.val_add, widen] at h
+    simp only [Fin.val_add, Fin.castLE] at h
     exact Fin.ext (mod_add_right_cancel k.2
       (Nat.lt_of_lt_of_le a.2 hr) (Nat.lt_of_lt_of_le b.2 hr) h)
   unfold cyclicSet
@@ -267,19 +230,19 @@ private theorem cyclicSet_card (n r : ℕ) (k : Fin n) (hr : r ≤ n) :
   simp [Finset.card_univ, Fintype.card_fin]
 
 private theorem cyclicSet_mem_iff (n r : ℕ) (k j : Fin n) (hr : r ≤ n) :
-    j ∈ cyclicSet n r k hr ↔ ∃ m : Fin r, j = k + widen hr m := by
+    j ∈ cyclicSet n r k hr ↔ ∃ m : Fin r, j = k + Fin.castLE hr m := by
   unfold cyclicSet; simp [Finset.mem_image, Finset.mem_univ, true_and, eq_comm]
 
 /-- Each j belongs to exactly r cyclic sets (sparsity with equality).
-    Proved by showing {k : j ∈ S_k} equals the backward image {j - widen m | m < r}. -/
+    Proved by showing {k : j ∈ S_k} equals the backward image {j - castLE m | m < r}. -/
 private theorem cyclicSet_sparsity_count (n r : ℕ) (j : Fin n) (hr : r ≤ n) :
     (Finset.univ.filter (fun k => j ∈ cyclicSet n r k hr)).card = r := by
-  -- Build the backward image: {j - widen m | m ∈ Fin r}
-  let f_back := fun m : Fin r => j - widen hr m
+  -- Build the backward image: {j - Fin.castLE hr m | m ∈ Fin r}
+  let f_back := fun m : Fin r => j - Fin.castLE hr m
   have h_back_inj : Function.Injective f_back := by
     intro a b hab
     have h := congr_arg Fin.val hab
-    simp only [f_back, Fin.val_sub, widen] at h
+    simp only [f_back, Fin.val_sub, Fin.castLE] at h
     -- (n - a + j) % n = (n - b + j) % n
     have ha_mod : (n - (a : ℕ) + j) % n = if n ≤ n - a + j then n - a + j - n else n - a + j := by
       split_ifs with ha_sub
@@ -302,10 +265,10 @@ private theorem cyclicSet_sparsity_count (n r : ℕ) (j : Fin n) (hr : r ≤ n) 
     constructor
     · rintro ⟨m, hm⟩
       use m
-      show j = k_var + widen hr m
+      show j = k_var + Fin.castLE hr m
       rw [← hm]
       exact Fin.ext_iff.mpr (by
-        simp only [Fin.val_add, Fin.val_sub, widen]
+        simp only [Fin.val_add, Fin.val_sub, Fin.castLE]
         show (j : ℕ) = ((n - (m : ℕ) + (j : ℕ)) % n + (m : ℕ)) % n
         have hm_val : (m : ℕ) < n := Nat.lt_of_lt_of_le m.2 hr
         have hj_lt : (j : ℕ) < n := j.2
@@ -332,12 +295,12 @@ private theorem cyclicSet_sparsity_count (n r : ℕ) (j : Fin n) (hr : r ≤ n) 
       show f_back m = k_var
       simp only [f_back]
       exact Fin.ext_iff.mpr (by
-        simp only [Fin.val_sub, widen]
+        simp only [Fin.val_sub, Fin.castLE]
         show (n - (m : ℕ) + (j : ℕ)) % n = (k_var : ℕ)
         have hm_val : (m : ℕ) < n := Nat.lt_of_lt_of_le m.2 hr
         have hk_lt : (k_var : ℕ) < n := k_var.2
         have hj_val : (j : ℕ) = ((k_var : ℕ) + (m : ℕ)) % n := by
-          rw [Fin.ext_iff, Fin.val_add, widen] at hm'; exact hm'
+          rw [Fin.ext_iff, Fin.val_add, Fin.castLE] at hm'; exact hm'
         by_cases h_add : (k_var : ℕ) + (m : ℕ) < n
         · have h_mod : ((k_var : ℕ) + (m : ℕ)) % n = (k_var : ℕ) + (m : ℕ) := Nat.mod_eq_of_lt h_add
           have hj_eq : (j : ℕ) = (k_var : ℕ) + (m : ℕ) := by
