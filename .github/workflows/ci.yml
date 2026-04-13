@@ -76,13 +76,62 @@ jobs:
           echo "No admit found."
           echo "::endgroup::"
 
-      - name: Verify key theorem modules
+      - name: Mechanization completeness audit
         run: |
-          echo "::group::Verifying key modules build cleanly"
-          # All roots from lakefile must build — lake build already checks this,
-          # but explicitly verify the capstone module
-          lake env printPaths | head -5
-          echo "All modules built successfully."
+          echo "::group::Mechanization completeness audit"
+          ERRORS=0
+
+          check_theorem() {
+            local file="$1" name="$2" label="$3"
+            if grep -qE "^[[:space:]]*(private[[:space:]]+|protected[[:space:]]+|noncomputable[[:space:]]+)*theorem[[:space:]]+${name}\\b" "$file"; then
+              echo "  ✓ $label: $name"
+            else
+              echo "::error::$label missing: theorem $name not found in $file"
+              ERRORS=$((ERRORS + 1))
+            fi
+          }
+
+          check_no_stub() {
+            local file="$1" pattern="$2" label="$3"
+            if grep -qF "$pattern" "$file"; then
+              echo "::error::$label still contains stub: $pattern"
+              ERRORS=$((ERRORS + 1))
+            else
+              echo "  ✓ $label: no stub markers"
+            fi
+          }
+
+          echo ""
+          echo "=== Fully mechanized (verified present) ==="
+          check_theorem LeCamLowerBound.lean tight_sample_lower_bound "Thm 4 (Le Cam)"
+          check_theorem LeCamLowerBound.lean hellingerSq_uniform_shift "Thm 4 (H² shift)"
+          check_theorem LeCamLowerBound.lean exists_grid_size "Thm 4 (grid size)"
+          check_theorem WitnessGameDrift.lean C_k_nonneg "Lem 4 (Y-drift)"
+          check_theorem WitnessGameDrift.lean batch_mean_formula "Lem 5 (batch-mean)"
+          check_theorem WitnessGameDrift.lean progression_gap_sum "Lem 5 (progression)"
+          check_theorem WitnessGameDrift.lean regression_gap_sum "Lem 5 (regression)"
+          check_theorem WitnessGameDrift.lean batch_mean_misranking "Prop 3 (misranking)"
+          check_theorem RLocalGames.lean r_local_offset_bound "Lem 3 (r-local offset)"
+          check_theorem RLocalGames.lean r_local_alignment "Thm 7 (r-local alignment)"
+          check_theorem DriftTheorems/NegativeDrift.lean negative_drift_theorem "NDT (abstract)"
+
+          echo ""
+          echo "=== Required (must be fully mechanized) ==="
+          check_theorem RLocalGames.lean r_local_tightness_all_pairs_misranked "Prop 1 (cyclic adversarial)"
+          check_no_stub RLocalGames.lean "Uses a trivial zero-game" "Prop 1 (stub check)"
+
+          echo ""
+          echo "=== Skipped (known gaps — not enforced) ==="
+          echo "  ⊘ Thm 9: ND coupling → E[T_X] = 2^Ω(n)"
+          echo "  ⊘ Thm 8: LBT coupling → E[T_X] = O(n log n)"
+          echo "  ⊘ SignedEpistasisSkeleton: module placeholder"
+
+          echo ""
+          if [ $ERRORS -gt 0 ]; then
+            echo "::error::$ERRORS mechanization target(s) missing or incomplete"
+            exit 1
+          fi
+          echo "All required mechanization targets present."
           echo "::endgroup::"
 
       - name: Summary
@@ -91,8 +140,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           LEAN_FILES=$(find . -name '*.lean' -not -path './.lake/*' | wc -l)
           TOTAL_LINES=$(find . -name '*.lean' -not -path './.lake/*' -exec cat {} + | wc -l)
+          SORRY_COUNT=$(grep -rn 'sorry' --include='*.lean' . | grep -v '\.lake/packages/' | grep -v '^Binary' | wc -l || true)
+          AXIOM_COUNT=$(grep -rnE '^\s*(private\s+|protected\s+|noncomputable\s+)*axiom\b' --include='*.lean' . | grep -v '\.lake/packages/' | wc -l || true)
+          ADMIT_COUNT=$(grep -rn 'admit' --include='*.lean' . | grep -v '\.lake/packages/' | grep -v 'sorry_admit' | wc -l || true)
           echo "- **Lean source files:** ${LEAN_FILES}" >> $GITHUB_STEP_SUMMARY
           echo "- **Total lines:** ${TOTAL_LINES}" >> $GITHUB_STEP_SUMMARY
-          echo "- **sorry count:** 0" >> $GITHUB_STEP_SUMMARY
-          echo "- **axiom count:** 0" >> $GITHUB_STEP_SUMMARY
-          echo "- **admit count:** 0" >> $GITHUB_STEP_SUMMARY
+          echo "- **sorry count:** ${SORRY_COUNT}" >> $GITHUB_STEP_SUMMARY
+          echo "- **axiom count:** ${AXIOM_COUNT}" >> $GITHUB_STEP_SUMMARY
+          echo "- **admit count:** ${ADMIT_COUNT}" >> $GITHUB_STEP_SUMMARY
+          echo "- **required theorem:** Proposition 1 (r_local_tightness_all_pairs_misranked)" >> $GITHUB_STEP_SUMMARY
