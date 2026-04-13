@@ -391,7 +391,6 @@ theorem full_paper_capstone
     (h_n_rl : n_rl ≥ 1) (h_r_rl : r_rl ≥ 1)
     (h_eps_rl_bound : epsilon_rl < 1 / (r_rl : ℝ))
     (h_lambda_rl : lambda_rl > 1)
-    (h_eps_tight : epsilon_rl ≥ 1 / (r_rl : ℝ))
     (h_c_rl : c_rl > 1) (h_r_le_n_rl : r_rl ≤ n_rl)
     -- LeCamLowerBound parameters (Theorem 4)
     (n_lcam : ℕ) (hn_lcam : n_lcam ≥ 2)
@@ -478,8 +477,6 @@ theorem full_paper_capstone
      ≥ 2 * (1 - G_rl.epsilon * G_rl.r) / G_rl.n) ∧
     -- r_local_runtime_bound (Theorem 8)
     (∃ c : ℝ, c > 0 ∧ c * (n_rl : ℝ) ^ 2 * Real.log lambda_rl > 0) ∧
-    -- r_local_tightness (Proposition 1)
-    (∃ G : RLocalGames.RLocalGame (Fin n_rl → Bool) (Fin n_rl → Bool), G.epsilon = epsilon_rl ∧ G.r = r_rl) ∧
     -- tight_sample_lower_bound (Theorem 4: Le Cam)
     (∃ c : ℝ, c > 0 ∧
       ∀ K : ℕ, K > 0 →
@@ -500,7 +497,7 @@ theorem full_paper_capstone
           (∑ i : Fin K, ∑ k : Fin G.n,
               G.R_k k (fun _ => false) (fun _ => true)) / (K : ℝ)))
     := by
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   -- 1. batch_size_controls_phase_transition
   · exact batch_size_controls_phase_transition game partition lambda_ B hlambda hB hcrit_pos
   -- 2. hoeffding_batch_bound
@@ -559,11 +556,9 @@ theorem full_paper_capstone
   · exact RLocalGames.r_local_alignment G_rl x_rl x'_rl j_rl h_diff_rl h_gap_rl h_eps_rl K_rl hK_rl ys_rl
   -- 26. r_local_drift_constant_positivity (Theorem 8 precondition)
   · exact RLocalGames.r_local_drift_constant_positivity n_rl r_rl epsilon_rl lambda_rl h_n_rl h_r_rl h_eps_rl_bound h_lambda_rl
-  -- 27. r_local_game_exists_at_threshold (Proposition 1 existence)
-  · exact RLocalGames.r_local_game_exists_at_threshold n_rl r_rl epsilon_rl h_r_rl h_eps_tight
-  -- 28. tight_sample_lower_bound (Theorem 4: Le Cam)
+  -- 27. tight_sample_lower_bound (Theorem 4: Le Cam)
   · exact LeCamLowerBound.tight_sample_lower_bound n_lcam hn_lcam epsilon_lcam B_lcam h_eps_pos_lcam h_eps_bound_lcam hB_pos_lcam
-  -- 29. r_local_tightness_all_pairs_misranked (Proposition 1: full cyclic adversarial trap)
+  -- 28. r_local_tightness_all_pairs_misranked (Proposition 1: full cyclic adversarial trap)
   · exact RLocalGames.r_local_tightness_all_pairs_misranked n_rl r_rl c_rl h_n_rl h_r_rl h_r_le_n_rl h_c_rl
 
 end UnifiedPaperValidation
