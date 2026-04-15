@@ -146,7 +146,7 @@ theorem r_local_alignment {α β : Type _} (G : RLocalGame α β)
     linarith
   linarith
 
-/-- Theorem 8 (precondition): r-local drift constant positivity.
+/-- **[PRECONDITION ONLY]** Theorem 8 (precondition): r-local drift constant positivity.
     Proves the core algebraic fact that the drift constant c = 1/(2(1-εr)) > 0.
     The full runtime bound E[T_X] = O(n log n) requires coupling with the
     Level-Based Theorem (Corus et al. 2018), which is not formalized here. -/

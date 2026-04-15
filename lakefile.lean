@@ -19,7 +19,7 @@ lean_lib «CoEALevelBased» where
              `HoeffdingBridge, `LBTPreconditions, `TrapGameEA, `SimulationCoupling,
              `MeanRankingLemma, `GapClosureSolutions, `CheckTypes,
              `DriftTheorems.AdditiveDrift, `DriftTheorems.MultiplicativeDrift,
-             `DriftTheorems.NegativeDrift, `LeCamLowerBound]
+             `DriftTheorems.NegativeDrift, `LeCamLowerBound, `LBTCoupling]
 
 lean_exe «coea_level_based» where
   root := `Main
