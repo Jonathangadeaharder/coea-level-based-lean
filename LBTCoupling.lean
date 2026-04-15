@@ -695,11 +695,35 @@ lemma r_local_G1 {β : Type _} (n r : ℕ) (hn : n ≥ 2) (hr : r ≥ 1)
     h_lambda_pos hK h_lambda_large G j.val P hj' h_count
 
 /--
-**Lemma (G2 — Growth Rate).**
+**Lemma (G2 — Growth Rate).** *Trusted sorry, permanent under current infrastructure.*
 
 Under the same batch size requirement as G1, the growth condition holds
-with z_j = (n - j)/n (or 1/n at the top level). The CRN correlation
+with `z_j = (n - j)/n` (or `1/n` at the top level). The CRN correlation
 is benign by `CRNPathwiseReduction.lean` (GAP-3, resolved).
+
+**Why this sorry cannot be closed under the current placeholder kernel.**
+The proof obligation is
+  `(coea_sel_kernel G K lambda_pop) P (A_ge (A_lvl n) j.val)).toReal ≥ z_j * c / lambda_pop`
+with `z_j = (n - j)/n` for `j < n` (and `1/n` at the top).
+Under the placeholder definition `coea_sel_measure = coea_measure` (for
+`lambda_pop ≠ 0`), `coea_sel_kernel` performs no actual best-of-λ selection.
+A purely preservation-based argument via Bernoulli's inequality
+`(1 - 1/n)^n ≥ 1/4` gives only `c / (4 * lambda_pop)`, which is strictly weaker
+than the required `(n - j)/n * c / lambda_pop` whenever `j < 3n/4`. The
+shortfall factor is precisely the best-of-λ selection amplification that the
+placeholder `coea_sel_measure` abstracts away. Weakening `z_j` is not an
+option: the assembled runtime bound uses `∑_j 1/z_j = n · H_n = O(n log n)`,
+which is the paper's target big-O.
+
+Closing this sorry requires implementing the real best-of-λ kernel via
+`MeasureTheory.Measure.pi` over `Fin lambda_pop` plus `Finset.argmax` by
+Hamming weight, which the comment on `coea_sel_measure` documents as needing
+MeasureTheory API not currently available in our Mathlib version. The
+underlying mathematical content (Corus–Dang–Eremeev–Lehre 2018 Level-Based
+Theorem analysis on OneMax-structured level sets) is a textbook result.
+
+See `conclusion.tex` Table 1 in the paper for the mechanization-boundary
+statement; this is one of three trusted sorry preserved intentionally.
 -/
 lemma r_local_G2 {β : Type _} (n r : ℕ) (hn : n ≥ 2) (hr : r ≥ 1)
     (epsilon B C : ℝ) (h_eps : epsilon < 1 / (r : ℝ)) (hB : B > 0) (hC : C > 0) (K lambda_pop : ℕ)
@@ -707,9 +731,10 @@ lemma r_local_G2 {β : Type _} (n r : ℕ) (hn : n ≥ 2) (hr : r ≥ 1)
     (G : RLocalGame (BitString n) β) :
     ConditionG2 (by omega : n + 1 > 0) lambda_pop (A_lvl n) (coea_sel_kernel G K lambda_pop) (1/4 : ℝ) (r_local_z n) := by
   intro j P c hc_pos hc_le
-  -- By selection monotonicity, D_sel(P)(A_{>=j}) >= D_mut(P)(A_{>=j}).
-  -- Mutation preservation: D_mut(P)(A_{>=j}) >= z_j * c/lambda.
-  -- Combines Bernoulli inequality with standard bit-flip analysis.
+  -- Placeholder coea_sel_kernel = mutation-only measure: preservation gives at
+  -- most c/(4*lambda_pop) via Bernoulli; (n-j)/n * c/lambda_pop requires actual
+  -- best-of-λ amplification which the placeholder abstracts away. See the
+  -- block doc comment above for the full obstruction analysis.
   sorry
 
 -- =============================================================================
