@@ -480,7 +480,7 @@ theorem regression_gap_sum {n : ℕ} (hn : n ≥ 2)
 open Real
 
 /--
-**Theorem 9 (precondition):** An exponential lower bound exists.
+**[PRECONDITION ONLY]** Theorem 9 (precondition): An exponential lower bound exists.
 Proves ∃T > 0, T ≥ exp(n-1). The full CoEA escape time bound E[T_X] = 2^{Ω(n)}
 requires the Negative Drift Theorem (Oliveto et al. 2011), which is not formalized here.
 -/
