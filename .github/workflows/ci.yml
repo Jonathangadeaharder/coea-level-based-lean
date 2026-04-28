@@ -2,7 +2,10 @@ name: Lean CI
 
 on:
   push:
-    branches: [master, peer-review-fixes]
+    branches:
+      - master
+      - peer-review-fixes
+      - 'epic/**'
   pull_request:
     branches: [master]
 
@@ -10,6 +13,7 @@ jobs:
   build-and-verify:
     runs-on: ubuntu-latest
     name: Build & Verify Formalization
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -83,6 +87,20 @@ jobs:
           echo "No admit found."
           echo "::endgroup::"
 
+      - name: Check for native_decide
+        run: |
+          echo "::group::Searching for native_decide"
+          FOUND=$(grep -rn 'native_decide' --include='*.lean' . \
+            | grep -v '\.lake/packages/' \
+            || true)
+          if [ -n "$FOUND" ]; then
+            echo "::error::Found native_decide in Lean sources (bypasses kernel — use decide instead)"
+            echo "$FOUND"
+            exit 1
+          fi
+          echo "No native_decide found."
+          echo "::endgroup::"
+
       - name: Mechanization completeness audit
         run: |
           echo "::group::Mechanization completeness audit"
@@ -131,7 +149,6 @@ jobs:
           echo "=== Skipped (known gaps — not enforced) ==="
           echo "  ⊘ Thm 9: ND coupling → E[T_X] = 2^Ω(n)"
           echo "  ⊘ Thm 8: LBT coupling → E[T_X] = O(n log n)"
-          echo "  ⊘ SignedEpistasisSkeleton: module placeholder"
 
           echo ""
           if [ $ERRORS -gt 0 ]; then
@@ -150,9 +167,11 @@ jobs:
           SORRY_COUNT=$(grep -rn 'sorry' --include='*.lean' . | grep -v '\.lake/packages/' | grep -v '^Binary' | wc -l || true)
           AXIOM_COUNT=$(grep -rnE '^\s*(private\s+|protected\s+|noncomputable\s+)*axiom\b' --include='*.lean' . | grep -v '\.lake/packages/' | wc -l || true)
           ADMIT_COUNT=$(grep -rn 'admit' --include='*.lean' . | grep -v '\.lake/packages/' | grep -v 'sorry_admit' | wc -l || true)
+          NATIVE_DECIDE_COUNT=$(grep -rn 'native_decide' --include='*.lean' . | grep -v '\.lake/packages/' | wc -l || true)
           echo "- **Lean source files:** ${LEAN_FILES}" >> $GITHUB_STEP_SUMMARY
           echo "- **Total lines:** ${TOTAL_LINES}" >> $GITHUB_STEP_SUMMARY
-          echo "- **sorry count:** ${SORRY_COUNT}" >> $GITHUB_STEP_SUMMARY
+          echo "- **sorry count:** ${SORRY_COUNT} (3 documented deferred proofs in LBTCoupling.lean)" >> $GITHUB_STEP_SUMMARY
           echo "- **axiom count:** ${AXIOM_COUNT}" >> $GITHUB_STEP_SUMMARY
           echo "- **admit count:** ${ADMIT_COUNT}" >> $GITHUB_STEP_SUMMARY
+          echo "- **native_decide count:** ${NATIVE_DECIDE_COUNT}" >> $GITHUB_STEP_SUMMARY
           echo "- **required theorem:** Proposition 1 (r_local_tightness_all_pairs_misranked)" >> $GITHUB_STEP_SUMMARY
