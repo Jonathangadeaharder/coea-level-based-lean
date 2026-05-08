@@ -420,6 +420,10 @@ theorem level_based_theorem
     (h_γ₀ : γ₀ ∈ Set.Ioc (0 : ℝ) 1) (h_δ : δ > 0) (h_z : ∀ j, z j > 0) :
     expected_generations D {P | ∃ i, P i ∈ A ⟨m - 1, by omega⟩} ≤
       (8 / δ^2) * ∑ j : Fin m, ((lambda_pop : ℝ) * Real.log (6 * δ * lambda_pop / (4 + z j * δ * lambda_pop)) + 1 / z j) := by
+  -- TODO: trusted sorry pending proof of Level-Based Theorem (Corus, Dang, Erber, Lehre 2018).
+  -- This is the main probability-theoretic result from Algorithmica 2018.
+  -- Formalization requires: drift supermartingale construction, optional stopping theorem,
+  -- and population-level concentration. Currently deferred as a trusted theorem.
   sorry
 
 -- =============================================================================
@@ -623,6 +627,14 @@ lemma sel_amplification_bound {n : ℕ} (hn : n ≥ 2) (lambda_pop : ℕ)
     (j : ℕ) (hj : j < n)
     (h_count : (Nat.card {i // P i ∈ A_ge (A_lvl n) j} : ℝ) ≥ (1 / 4 : ℝ) * lambda_pop) :
     (coea_sel_measure lambda_pop P (A_ge (A_lvl n) (j + 1))).toReal ≥ 1 / (n : ℝ) := by
+  -- TODO: trusted sorry pending proof of selection amplification bound.
+  -- Mathematical content: 1-(1-p)^λ ≥ 1/n where p ≥ (1/4)·(1/n) is the per-trial
+  -- mutation+upgrade probability, and λ satisfies the G3 population bound.
+  -- Requires: Bernoulli inequality 1-(1-p)^λ ≥ 1-exp(-pλ) ≥ 1/n, plus connecting
+  -- the per-individual mutation probability to A_ge via the count assumption.
+  -- Under the placeholder coea_sel_measure = coea_measure, the best-of-λ selection
+  -- amplification is not modeled. Closing this requires implementing the real
+  -- best-of-λ kernel via Measure.pi + Finset.argmax by Hamming weight.
   sorry
 
 noncomputable def r_local_delta (n : ℕ) : ℝ := 1 / (n : ℝ)
@@ -731,10 +743,14 @@ lemma r_local_G2 {β : Type _} (n r : ℕ) (hn : n ≥ 2) (hr : r ≥ 1)
     (G : RLocalGame (BitString n) β) :
     ConditionG2 (by omega : n + 1 > 0) lambda_pop (A_lvl n) (coea_sel_kernel G K lambda_pop) (1/4 : ℝ) (r_local_z n) := by
   intro j P c hc_pos hc_le
-  -- Placeholder coea_sel_kernel = mutation-only measure: preservation gives at
+  -- TODO: trusted sorry pending proof of G2 growth rate condition.
+  -- Under placeholder coea_sel_measure = coea_measure, preservation gives at
   -- most c/(4*lambda_pop) via Bernoulli; (n-j)/n * c/lambda_pop requires actual
   -- best-of-λ amplification which the placeholder abstracts away. See the
   -- block doc comment above for the full obstruction analysis.
+  -- Closing requires: implementing real best-of-λ kernel via Measure.pi over
+  -- Fin lambda_pop plus Finset.argmax by Hamming weight (MeasureTheory API
+  -- not currently available in our Mathlib version).
   sorry
 
 -- =============================================================================
