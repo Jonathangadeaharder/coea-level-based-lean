@@ -1,8 +1,8 @@
 import Lake
 open Lake DSL
 
-package «coea_level_based» where
-  -- CoEA Level-Based Phase Transition formalization
+package «drift_lean» where
+  -- Drift Lean: runtime analysis via drift theorems
 
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git"
@@ -23,5 +23,5 @@ lean_lib «CoEALevelBased» where
              `LBTPreconditions.Private, `SignedEpistasisSkeleton,
              `Examples.LBT_ToyEA]
 
-lean_exe «coea_level_based» where
+lean_exe «drift_lean» where
   root := `Main

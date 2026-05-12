@@ -2,9 +2,9 @@
 
 ## Context
 
-Working in Lean 4 (Mathlib, v4.29.0). File: `RLocalGames.lean` in namespace `RLocalGames`. Two theorems remain as axioms and need to be proved (or the signatures need fixing).
+Working in Lean 4 (toolchain: `leanprover/lean4:v4.30.0-rc2`). File: `RLocalGames.lean` in namespace `RLocalGames`. Two theorems remain as axioms and need to be proved (or the signatures need fixing).
 
-The build is at `~/projects/coea_level_based_build/`. Build with: `cd ~/projects/coea_level_based_build && lake build RLocalGames`.
+The build is at `~/projects/drift_lean_build/`. Build with: `cd ~/projects/drift_lean_build && lake build RLocalGames`.
 
 ## The Structure
 

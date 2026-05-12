@@ -5,7 +5,8 @@
    "type": "git",
    "subDir": null,
    "scope": "",
-   "rev": "d9874e4268b90436f38b811922d5aff6af138197",
+   "rev": "6ac03968135f47e493271a20fdc64970d912a898",
+   "rev": "6ac03968135f47e493271a20fdc64970d912a898",
    "name": "mathlib",
    "manifestFile": "lake-manifest.json",
    "inputRev": null,
@@ -91,6 +92,6 @@
    "inputRev": "v4.30.0-rc2",
    "inherited": true,
    "configFile": "lakefile.toml"}],
- "name": "coea_level_based",
+ "name": "drift_lean",
  "lakeDir": ".lake",
  "fixedToolchain": false}
