@@ -1,6 +1,7 @@
 # Lean build artifacts
 .lake/build/
 .lake/packages/
+.lake/config/
 .lake/lakefile.olean
 .lake/lakefile.trace
 
@@ -15,3 +16,4 @@ Thumbs.db
 *.swp
 *~
 .vscode/
+.worktrees/
