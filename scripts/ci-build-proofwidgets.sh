@@ -23,5 +23,5 @@ if [[ -n "$WIDGET" && -f "$WIDGET/package.json" ]]; then
     fi
     npm run build
   )
-  (cd "$PW" && lake build widgetJsAll)
+  lake --dir "$PW" build widgetJsAll
 fi
