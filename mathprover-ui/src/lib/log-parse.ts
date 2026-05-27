@@ -9,7 +9,9 @@ export type TimelineStep = {
 };
 
 const PATTERNS: { re: RegExp; lvl: string; title?: string }[] = [
-  { re: /^loading model/, lvl: 'info', title: 'Loading model' },
+  { re: /^\[heartbeat\]/, lvl: 'think', title: 'Generating tokens' },
+  { re: /^\[generate\]/, lvl: 'info', title: 'Generation phase' },
+  { re: /^\[compile\]/, lvl: 'info', title: 'Compiling candidate' },
   { re: /^loaded in/, lvl: 'ok', title: 'Model ready' },
   { re: /^=== sample (\d+)\/(\d+) ===/, lvl: 'think', title: 'Sample generation' },
   { re: /^--- correction round (\d+) ---/, lvl: 'warn', title: 'Self-correction' },

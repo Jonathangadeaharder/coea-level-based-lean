@@ -75,6 +75,8 @@ def run_goedel(
         str(work_dir),
         "--log-file",
         str(log_path),
+        "--run-id",
+        log_path.stem,
         "--num-samples",
         str(config.max_attempts),
         "--correction-rounds",

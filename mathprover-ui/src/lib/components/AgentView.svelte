@@ -188,6 +188,15 @@
         </span>
         {#if run.isLive}
           <span style="font-size: 11px; color: var(--st-progress);">● running</span>
+          {#if activeAgent()?.detail}
+            <span style="font-size: 11px; color: var(--fg-3); margin-left: 8px;">{activeAgent()?.detail}</span>
+          {/if}
+          {#if activeAgent()?.tokensGenerated}
+            <span style="font-size: 11px; color: var(--fg-3); margin-left: 8px; font-family: var(--font-mono);">
+              {activeAgent()?.tokensGenerated} tok
+              {#if activeAgent()?.tokensPerSec} · {activeAgent()?.tokensPerSec?.toFixed(1)} tok/s{/if}
+            </span>
+          {/if}
         {/if}
       </div>
     </div>

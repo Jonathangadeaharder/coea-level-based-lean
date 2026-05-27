@@ -32,6 +32,11 @@ class RunRecord:
     verify_ok: bool | None = None
     message: str | None = None
     pid: int | None = None
+    phase: str | None = None
+    detail: str | None = None
+    tokens_generated: int | None = None
+    tokens_per_sec: float | None = None
+    heartbeat_at: str | None = None
     config: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -99,6 +104,56 @@ def set_graph_active_agent(project_root: Path, *, run: RunRecord | None) -> None
             "log": [],
         }
     graph_path.write_text(json.dumps(graph, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def update_run_progress(
+    project_root: Path,
+    run_id: str,
+    *,
+    phase: str,
+    detail: str = "",
+    tokens_generated: int | None = None,
+    tokens_per_sec: float | None = None,
+) -> None:
+    record = read_run(project_root, run_id)
+    if record is None:
+        return
+    record.phase = phase
+    record.detail = detail
+    record.heartbeat_at = utc_now()
+    if tokens_generated is not None:
+        record.tokens_generated = tokens_generated
+    if tokens_per_sec is not None:
+        record.tokens_per_sec = round(tokens_per_sec, 2)
+    write_run(project_root, record)
+    # Keep graph activeAgent in sync for UI polling.
+    if record.status in {"pending", "running"}:
+        graph_path = project_root / ".mathprover" / "graph.json"
+        if not graph_path.exists():
+            return
+        graph = json.loads(graph_path.read_text(encoding="utf-8"))
+        agent = graph.get("activeAgent") or {}
+        if agent.get("runId") == run_id:
+            agent["step"] = _phase_step(phase)
+            agent["phase"] = phase
+            agent["detail"] = detail
+            agent["tokensGenerated"] = tokens_generated
+            agent["tokensPerSec"] = tokens_per_sec
+            agent["heartbeatAt"] = record.heartbeat_at
+            graph["activeAgent"] = agent
+            graph_path.write_text(json.dumps(graph, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def _phase_step(phase: str) -> int:
+    mapping = {
+        "loading_model": 0,
+        "generating": 1,
+        "compiling": 2,
+        "correcting": 3,
+        "verifying": 4,
+        "done": 4,
+    }
+    return mapping.get(phase, 1)
 
 
 def resolve_node_id(project_root: Path, folder: str, theorem: str) -> str:

@@ -113,6 +113,11 @@ export interface LiveAgent {
   step: number;
   totalSteps: number;
   runId?: string;
+  phase?: string;
+  detail?: string;
+  tokensGenerated?: number;
+  tokensPerSec?: number;
+  heartbeatAt?: string;
   log: { t: string; lvl: string; msg: string }[];
 }
 
@@ -129,7 +134,11 @@ export interface RunRecord {
   result?: AttemptResult | null;
   verify_ok?: boolean | null;
   message?: string | null;
-  pid?: number | null;
+  phase?: string | null;
+  detail?: string | null;
+  tokens_generated?: number | null;
+  tokens_per_sec?: number | null;
+  heartbeat_at?: string | null;
 }
 
 export type FoundationStatus = 'AXIOM' | 'PARTIAL' | 'MECHANIZED' | 'PLANNED';

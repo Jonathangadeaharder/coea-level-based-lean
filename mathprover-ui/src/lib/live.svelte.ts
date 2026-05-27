@@ -26,7 +26,7 @@ export function startLivePolling() {
     }
   };
   tick();
-  pollTimer = setInterval(tick, app.activeRunId ? 5000 : 15000);
+  pollTimer = setInterval(tick, app.activeRunId ? 3000 : 10000);
 }
 
 export function stopLivePolling() {
