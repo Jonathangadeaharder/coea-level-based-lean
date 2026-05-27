@@ -1,0 +1,47 @@
+[provers.goedel]
+type = "local"
+command = "/Users/jonathangadeaharder/models/goedel-prover-v2-32b/run.sh"
+max_attempts = 8
+max_tokens = 8192
+
+[provers.aristotle]
+type = "cloud"
+command = "aristotle"
+requires_env = ["ARISTOTLE_API_KEY"]
+
+[routing]
+default_leaf = "goedel"
+default_capstone = "aristotle"
+escalate_after_failures = 3
+capstone_node = "L1012_r_local_G2"
+
+# Frontier leaves: Goedel first (see proofs/PLAN.md)
+[[routing.leaves]]
+folder = "L703_mutation_prob_lower_bound"
+kind = "analytic"
+
+[[routing.leaves]]
+folder = "L661_coea_sel_measure_prob"
+kind = "combinatorial"
+
+[[routing.leaves]]
+folder = "L669_coea_sel_measure_cdf"
+kind = "combinatorial"
+
+[[routing.second_wave]]
+folder = "L693_sel_monotone_level"
+requires = ["L669_coea_sel_measure_cdf"]
+
+[[routing.second_wave]]
+folder = "L715_coea_measure_ge_from_count"
+requires = ["L703_mutation_prob_lower_bound"]
+
+[[routing.capstone]]
+folder = "L1012_r_local_G2"
+requires = ["L669_coea_sel_measure_cdf", "L715_coea_measure_ge_from_count"]
+
+# Toolchain pinned for Aristotle CLI (do not upgrade until Harmonic supports newer Lean)
+[toolchain]
+lean = "leanprover/lean4:v4.28.0"
+mathlib = "v4.28.0"
+note = "Downgraded from v4.30.0-rc2 for Aristotle compatibility."

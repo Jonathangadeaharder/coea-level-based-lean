@@ -17,3 +17,8 @@ Thumbs.db
 *~
 .vscode/
 .worktrees/
+
+# Secrets and agent run artifacts
+.env
+.mathprover/attempts/
+agents/.venv/

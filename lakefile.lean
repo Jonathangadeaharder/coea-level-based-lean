@@ -5,7 +5,7 @@ package «drift_lean» where
   -- Drift Lean: runtime analysis via drift theorems + CoEA Level-Based Phase Transition formalization
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git"
+  "https://github.com/leanprover-community/mathlib4.git" @ "v4.28.0"
 
 @[default_target]
 lean_lib «CoEALevelBased» where
