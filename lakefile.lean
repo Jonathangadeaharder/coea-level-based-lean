@@ -4,6 +4,10 @@ open Lake DSL
 package «drift_lean» where
   -- Drift Lean: runtime analysis via drift theorems + CoEA Level-Based Phase Transition formalization
 
+-- Direct dep without Mathlib's errorOnBuild guard so CI can npm-build widgets when needed.
+require proofwidgets from git
+  "https://github.com/leanprover-community/ProofWidgets4" @ "v0.0.87"
+
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git" @ "v4.28.0"
 

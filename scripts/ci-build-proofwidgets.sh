@@ -4,10 +4,24 @@ set -euo pipefail
 
 lake update
 
-# Shared .lake symlinks can leave stale ProofWidgets JS; force a cloud refetch.
 PW="$(find .lake/packages -maxdepth 1 -type d -iname 'proofwidgets*' | head -1)"
 if [[ -n "$PW" ]]; then
   rm -rf "$PW/.lake/build"
 fi
 
 lake exe cache get
+
+# Cloud release can succeed while widgetJsAll trace is still stale on shared runners.
+WIDGET="${PW:+$PW/widget}"
+if [[ -n "$WIDGET" && -f "$WIDGET/package.json" ]]; then
+  (
+    cd "$WIDGET"
+    if [[ -f package-lock.json ]]; then
+      npm ci
+    else
+      npm install
+    fi
+    npm run build
+  )
+  (cd "$PW" && lake build widgetJsAll)
+fi
