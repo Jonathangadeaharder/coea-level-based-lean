@@ -22,3 +22,5 @@ Thumbs.db
 .env
 .mathprover/attempts/
 agents/.venv/
+agents/__pycache__/
+agents/**/__pycache__/
