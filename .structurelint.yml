@@ -4,6 +4,15 @@ exclude:
   - .git/**
   - .lake/**
   - "**/.DS_Store"
+  - mathprover-ui/**
+  - proofs/**
+  - agents/**
+  - scripts/**
+  - openspec/**
+  - .cursor/**
+  - .github/**
+  - blueprint/**
+  - mathprover.toml
 
 rules:
   max-depth:

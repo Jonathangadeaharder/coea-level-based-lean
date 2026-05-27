@@ -561,4 +561,40 @@ theorem full_paper_capstone
   -- 28. r_local_tightness_all_pairs_misranked (Proposition 1: full cyclic adversarial trap)
   · exact RLocalGames.r_local_tightness_all_pairs_misranked n_rl r_rl c_rl h_n_rl h_r_rl h_r_le_n_rl h_c_rl
 
+-- ============================================================================
+-- Paper-label aliases (added 2026-05-27)
+--
+-- The following two theorems are exact Lean counterparts of the paper's
+-- `prop:offset_property` and `prop:f_vs_robust` (preliminaries.tex). They
+-- consist of unfolding the structures already defined above; the substantive
+-- content is in `separable_game_exact_offset` and the residual-bound
+-- decomposition of `EpsSeparableGame`. No new sorry is introduced.
+-- ============================================================================
+
+/-- **prop:offset_property** (paper preliminaries.tex).
+On a separable game `g(x,y) = f(x) + h(y)`, evaluating against any fixed
+opponent yields a candidate-independent offset, so any two evaluators agree
+with `f` on ranking. The constant equals `G.h y₀` for current-opponent
+evaluation; for archive minimum, set `y₀ := argmin_{y ∈ A} G.h y` (existence
+follows from finite archives). -/
+theorem offset_property_separable {α β : Type _}
+    (G : SeparableGame α β) (y₀ : β) (x x' : α) :
+    G.evalAgainst y₀ x' - G.evalAgainst y₀ x = G.f x' - G.f x := by
+  simp [SeparableGame.evalAgainst]
+
+/-- **prop:f_vs_robust** (paper preliminaries.tex), pairwise form.
+On an ε-separable game, the pairwise difference of the evaluator-against-y₀
+deviates from `f`'s pairwise difference by at most `2ε`. Specialising to
+`ε = 0` recovers exact ranking; for `ε < δ/2` where `δ` is the `f`-adjacent-
+level gap, `f`-ranking implies evaluator-ranking on adjacent levels. -/
+theorem f_vs_robust_eps_separable {α β : Type _}
+    (G : EpsSeparableGame α β) (y₀ : β) (x x' : α) :
+    |G.g x' y₀ - G.g x y₀ - (G.f x' - G.f x)| ≤ 2 * G.epsilon := by
+  have hR1 := G.h_residual_bound x y₀
+  have hR2 := G.h_residual_bound x' y₀
+  have h_diff : G.g x' y₀ - G.g x y₀ - (G.f x' - G.f x) = G.R x' y₀ - G.R x y₀ := by
+    unfold EpsSeparableGame.g; ring
+  rw [h_diff, abs_le]
+  refine ⟨?_, ?_⟩ <;> linarith
+
 end UnifiedPaperValidation
