@@ -11,11 +11,15 @@ import { EMPTY_PROJECT_DATA } from './data-empty';
 
 interface AppState {
   openedProject: boolean;
+  projectRoot: string;
   route: Route;
   selectedNodeId: string | null;
   selectedDefId: string | null;
   paperLeanNodeId: string;
   agentNodeId: string | null;
+  activeRunId: string | null;
+  liveLogText: string;
+  goedelLocked: boolean;
   hoveredId: string | null;
   pendingDispatch: PendingDispatch | null;
 }
@@ -43,11 +47,15 @@ function defaults(): Tweaks {
 
 export const app = $state<AppState>({
   openedProject: false,
+  projectRoot: '',
   route: 'graph',
   selectedNodeId: null,
   selectedDefId: null,
   paperLeanNodeId: '',
   agentNodeId: null,
+  activeRunId: null,
+  liveLogText: '',
+  goedelLocked: false,
   hoveredId: null,
   pendingDispatch: null,
 });
@@ -77,12 +85,10 @@ export const ACCENT_PALETTES: Record<string, { strong: string; soft: string; bor
 };
 
 export const MODELS = [
-  { id: 'auto',      name: 'auto-router',                    desc: 'Apply mathprover.toml rules (Goedel leaves, Aristotle capstone)', lat: 'mixed' },
-  { id: 'goedel',    name: 'goedel-prover-v2-32b (local MLX)', desc: 'Frontier leaves — first pass, local 8-bit MLX',               lat: '~2m' },
-  { id: 'aristotle', name: 'aristotle (cloud)',              desc: 'Capstone L1012 and escalation after local failures',          lat: '~10m' },
-  { id: 'opus',      name: 'claude-opus-4-7',                desc: 'Top-tier — manual override for hard proofs',                  lat: '~40s' },
-  { id: 'fast',      name: 'claude-haiku-4-5',               desc: 'Fast — best for refining sorries',                            lat: '~3s' },
-  { id: 'deep',      name: 'claude-sonnet-4-5',              desc: 'Deep reasoning — best for novel proofs',                      lat: '~20s' },
-  { id: 'proof',     name: 'reprover-7B (local)',            desc: 'Proof-tuned, mathlib-pretrained — for tactic search',         lat: '~1s' },
-  { id: 'gpt5',      name: 'gpt-5',                          desc: 'Alternate frontier model — for cross-checks',                 lat: '~15s' },
-];
+  { id: 'auto',      name: 'auto-router',                    desc: 'Apply mathprover.toml rules (Goedel leaves, Aristotle capstone)', lat: 'mixed', available: true },
+  { id: 'goedel',    name: 'goedel-prover-v2-32b (local MLX)', desc: 'Frontier leaves — first pass, local 8-bit MLX',               lat: '~30m', available: true },
+  { id: 'aristotle', name: 'aristotle (cloud)',              desc: 'Capstone L1012 and escalation after local failures',          lat: '~10m', available: true },
+] as const;
+
+/** Models shown in the dispatch picker (implemented backends only). */
+export const DISPATCH_MODELS = MODELS.filter((m) => m.available);
