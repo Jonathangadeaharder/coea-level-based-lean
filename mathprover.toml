@@ -1,0 +1,64 @@
+# MathProver routing for this Lean project.
+# Tooling lives in https://github.com/VidiomTM/mathprover (set MATHPROVER_HOME).
+# Regenerate graph: python3 scripts/reindex_graph.py
+
+# Goedel 32B 8-bit uses ~35 GiB weights; never run more than one instance locally.
+[resources]
+max_concurrent_goedel = 1
+min_free_memory_gib = 12.0
+forbid_parallel_dispatch = true
+
+[provers.goedel]
+type = "local"
+command = "${GOEDEL_PROVER_PATH}"
+max_attempts = 4
+max_tokens = 32768
+correction_rounds = 2
+initial_max_tokens = 28000
+correction_max_tokens = 8000
+temperature = 1.0
+top_p = 0.95
+
+[provers.aristotle]
+type = "cloud"
+command = "aristotle"
+requires_env = ["ARISTOTLE_API_KEY"]
+poll_interval_seconds = 30
+max_wait_minutes = 120
+
+[routing]
+default_leaf = "goedel"
+default_capstone = "aristotle"
+escalate_after_failures = 3
+capstone_node = "L1012_r_local_G2"
+
+# Frontier leaves: Goedel first (see proofs/PLAN.md)
+[[routing.leaves]]
+folder = "L703_mutation_prob_lower_bound"
+kind = "analytic"
+
+[[routing.leaves]]
+folder = "L661_coea_sel_measure_prob"
+kind = "combinatorial"
+
+[[routing.leaves]]
+folder = "L669_coea_sel_measure_cdf"
+kind = "combinatorial"
+
+[[routing.second_wave]]
+folder = "L693_sel_monotone_level"
+requires = ["L669_coea_sel_measure_cdf"]
+
+[[routing.second_wave]]
+folder = "L715_coea_measure_ge_from_count"
+requires = ["L703_mutation_prob_lower_bound"]
+
+[[routing.capstone]]
+folder = "L1012_r_local_G2"
+requires = ["L669_coea_sel_measure_cdf", "L715_coea_measure_ge_from_count"]
+
+# Toolchain pinned for Aristotle CLI (do not upgrade until Harmonic supports newer Lean)
+[toolchain]
+lean = "leanprover/lean4:v4.28.0"
+mathlib = "v4.28.0"
+note = "Downgraded from v4.30.0-rc2 for Aristotle compatibility."

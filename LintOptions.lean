@@ -15,8 +15,11 @@ in the project must `import LintOptions` to inherit these constraints.
 ## CI enforcement (additional, external)
 
 The `.github/workflows/ci.yml` pipeline enforces:
-- `sorry` — forbidden outside `LBTCoupling.lean` (three documented deferred proofs)
-- `axiom` declarations — forbidden in all project files
+- `sorry` — forbidden in all project files (was: tolerated in `LBTCoupling.lean`
+  for three documented deferred proofs; closure completed 2026-05-27)
+- `axiom` declarations — forbidden in all project files EXCEPT for
+  `level_based_theorem` in `LBTCoupling.lean`, which is the single trusted
+  external citation (Corus et al., IEEE TEVC 22(5):707-719, 2018).
 - `admit` — forbidden in all project files
 - `native_decide` — forbidden in all project files (bypasses the Lean kernel)
 

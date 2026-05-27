@@ -11,7 +11,7 @@ class LinearOrderedDivisionRing (R : Type*) extends DivisionRing R, LinearOrder 
 
 -- Bridge instance: [AddLeftMono] + [AddRightMono] → IsOrderedAddMonoid
 -- Required by smul_nonneg_of_nonpos_of_nonpos and related lemmas
-instance addMono_to_isOrderedAddMonoid {V : Type*} [AddCommGroup V] [Preorder V]
+instance addMono_to_isOrderedAddMonoid {V : Type*} [AddCommGroup V] [PartialOrder V]
     [AddLeftMono V] [AddRightMono V] : IsOrderedAddMonoid V where
   add_le_add_left _ _ h c := add_le_add_left h c
   add_le_add_right _ _ h c := add_le_add_right h c

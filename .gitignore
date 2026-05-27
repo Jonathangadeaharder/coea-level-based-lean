@@ -17,3 +17,12 @@ Thumbs.db
 *~
 .vscode/
 .worktrees/
+
+# Secrets and agent run artifacts
+.env
+!.env.example
+.mathprover/*
+!.mathprover/README.md
+!.mathprover/meta.json.example
+scripts/__pycache__/
+.claude/
