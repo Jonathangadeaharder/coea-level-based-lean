@@ -1,0 +1,40 @@
+schema: spec-driven
+
+context: |
+  Project: lean-runtime-analysis — PhD formalization of level-based runtime analysis
+  (Corus et al. 2018) in Lean 4 + Mathlib.
+
+  Tech stack:
+  - Lean 4.28, Lake, Mathlib 4.28
+  - Main file: LBTCoupling.lean (selection/mutation coupling lemmas)
+  - Python agents: Goedel-Prover-V2 (local MLX 32B) + Aristotle (cloud)
+  - MathProver UI: SvelteKit 5 in mathprover-ui/
+  - Spec/workflow: OpenSpec (this repo)
+
+  Hard rules:
+  - Do NOT prove from scratch when paper_source.md exists — translate published proofs.
+  - No new sorry in LBTCoupling.lean; split into proofs/<folder>/subproofs/ instead.
+  - Only trusted axiom: level_based_theorem (external LBT citation).
+  - Merge order: leaves → second wave → capstone L1012_r_local_G2.
+
+  Key paths:
+  - proofs/PLAN.md — worker DAG (mirrors openspec/changes/close-six-sorries/)
+  - proofs/<folder>/ — attempt.lean, paper_source.md, status.md per lemma
+  - .mathprover/graph.json — MathProver DAG (bootstrap via scripts/bootstrap_graph.py)
+  - agents/dispatch.py — prover routing (mathprover.toml)
+  - mathprover.toml — Goedel leaves, Aristotle capstone/escalation
+
+  Verification: lake build LBTCoupling after every merge.
+
+rules:
+  proposal:
+    - Reference existing paper lemmas by ID (L661, L669, L703, etc.)
+    - Include Non-goals section for proof work
+    - Link to proofs/<folder>/ when discussing a sorry
+  design:
+    - Prefer Mathlib lemmas over custom axioms
+    - Document prover routing (Goedel vs Aristotle) when touching agents/
+  tasks:
+    - One task per proof folder or merge step
+    - Mark L703 done; frontier is L661 + L669
+    - Include lake build verification step per merge
