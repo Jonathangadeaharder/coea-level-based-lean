@@ -23,6 +23,10 @@ class RunResult:
 
 
 def _pipeline_runner(config: ProverConfig) -> Path:
+    if not config.command.strip():
+        raise RuntimeError(
+            "Goedel prover command is not configured. Set GOEDEL_PROVER_PATH to your run.sh path."
+        )
     run_sh = Path(os.path.expanduser(config.command)).resolve()
     pipeline = run_sh.parent / "run_pipeline.sh"
     if pipeline.exists():

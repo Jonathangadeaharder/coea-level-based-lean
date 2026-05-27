@@ -25,6 +25,7 @@ from run_registry import RunRecord, resolve_node_id, set_graph_active_agent, utc
 
 
 _NODE_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+_RUN_ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 
 
 def _sanitize_node_id(node: str) -> str:
@@ -44,13 +45,19 @@ def _proofs_subpath(proofs: Path, folder_name: str) -> Path:
     return target
 
 
+def _validate_run_id(run_id: str) -> str:
+    if not _RUN_ID_RE.fullmatch(run_id):
+        raise ValueError(f"Invalid run-id format: {run_id!r}")
+    return run_id
+
+
 def resolve_proof_folder(node: str, project_root: Path) -> str:
     proofs = project_root / "proofs"
     node = _sanitize_node_id(node)
 
     direct = _proofs_subpath(proofs, node)
     if direct.is_dir():
-        return node
+        return direct.relative_to(proofs.resolve()).name
 
     matches = sorted(
         p for p in proofs.glob(f"{node}*") if p.is_dir() and _NODE_ID_RE.match(p.name)
@@ -158,7 +165,7 @@ def dispatch(
     prover_cfg = config.provers[prover_name]
 
     attempts_root = root / ".mathprover" / "attempts" / folder
-    run_id = run_id or timestamp()
+    run_id = _validate_run_id(run_id or timestamp())
     log_path = attempts_root / f"{run_id}.log"
     log_rel = log_path.relative_to(root).as_posix()
     node_id = resolve_node_id(root, folder, proof_dir.name)

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import sys
+import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -11,6 +13,17 @@ if sys.version_info >= (3, 11):
     import tomllib
 else:
     import tomli as tomllib
+
+
+_ENV_VAR = re.compile(r"^\$\{([^}:]+)(?::-([^}]*))?\}$")
+
+
+def expand_config_value(value: str) -> str:
+    match = _ENV_VAR.fullmatch(value.strip())
+    if not match:
+        return os.path.expanduser(value)
+    var, default = match.group(1), match.group(2) or ""
+    return os.environ.get(var, default)
 
 
 @dataclass
@@ -70,7 +83,7 @@ def load_config(project_root: Path | None = None) -> MathProverConfig:
         provers[name] = ProverConfig(
             name=name,
             type=block["type"],
-            command=block["command"],
+            command=expand_config_value(block["command"]),
             max_attempts=int(block.get("max_attempts", 4)),
             max_tokens=int(block.get("max_tokens", 32768)),
             correction_rounds=int(block.get("correction_rounds", 2)),

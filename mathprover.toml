@@ -6,7 +6,7 @@ forbid_parallel_dispatch = true
 
 [provers.goedel]
 type = "local"
-command = "/Users/jonathangadeaharder/models/goedel-prover-v2-32b/run.sh"
+command = "${GOEDEL_PROVER_PATH}"
 max_attempts = 4
 max_tokens = 32768
 correction_rounds = 2
