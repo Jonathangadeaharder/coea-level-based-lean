@@ -136,7 +136,7 @@
 
   $effect(() => {
     if (!run || run.isLive || !run.logPath || !app.projectRoot) return;
-    const url = `/api/runs/${run.id}/log?project=${encodeURIComponent(app.projectRoot)}&path=${encodeURIComponent(run.logPath)}`;
+    const url = `/api/runs/${run.id}/log?project=${encodeURIComponent(app.projectRoot)}`;
     fetch(url)
       .then((r) => r.json())
       .then((body) => {

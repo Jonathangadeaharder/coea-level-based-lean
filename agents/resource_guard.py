@@ -119,3 +119,7 @@ def goedel_exclusive_lock(project_root: Path, limits: ResourceLimits | None = No
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
         finally:
             handle.close()
+            try:
+                lock_path.unlink(missing_ok=True)
+            except OSError:
+                pass

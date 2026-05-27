@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -22,15 +24,37 @@ from router import select_prover  # noqa: E402
 from run_registry import RunRecord, resolve_node_id, set_graph_active_agent, utc_now, write_run  # noqa: E402
 
 
+_NODE_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
+def _sanitize_node_id(node: str) -> str:
+    node = node.strip().removesuffix("/")
+    if not node or ".." in node or "/" in node or "\\" in node:
+        raise ValueError(f"Invalid node id: {node!r}")
+    if not _NODE_ID_RE.match(node):
+        raise ValueError(f"Invalid node id: {node!r}")
+    return node
+
+
+def _proofs_subpath(proofs: Path, folder_name: str) -> Path:
+    target = (proofs / folder_name).resolve()
+    proofs_root = proofs.resolve()
+    if not str(target).startswith(str(proofs_root) + os.sep):
+        raise ValueError(f"Proof folder escapes proofs/: {folder_name!r}")
+    return target
+
+
 def resolve_proof_folder(node: str, project_root: Path) -> str:
     proofs = project_root / "proofs"
-    node = node.strip().removesuffix("/")
+    node = _sanitize_node_id(node)
 
-    direct = proofs / node
+    direct = _proofs_subpath(proofs, node)
     if direct.is_dir():
         return node
 
-    matches = sorted(p for p in proofs.glob(f"{node}*") if p.is_dir())
+    matches = sorted(
+        p for p in proofs.glob(f"{node}*") if p.is_dir() and _NODE_ID_RE.match(p.name)
+    )
     if len(matches) == 1:
         return matches[0].name
 

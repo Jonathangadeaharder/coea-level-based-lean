@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
+import sys
 import tarfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -113,10 +115,23 @@ def write_if_compiles(
     return None
 
 
+def _safe_extractall(tar: tarfile.TarFile, destination: Path) -> None:
+    dest = destination.resolve()
+    for member in tar.getmembers():
+        target = (dest / member.name).resolve()
+        if not str(target).startswith(str(dest) + os.sep) and target != dest:
+            raise tarfile.TarError(f"unsafe path in archive: {member.name}")
+    if sys.version_info >= (3, 12):
+        tar.extractall(dest, filter="data")
+    else:
+        for member in tar.getmembers():
+            tar.extract(member, dest)
+
+
 def extract_tarball(archive: Path, destination: Path) -> Path:
     destination.mkdir(parents=True, exist_ok=True)
     with tarfile.open(archive, "r:*") as tar:
-        tar.extractall(destination, filter="data")
+        _safe_extractall(tar, destination)
     return destination
 
 

@@ -1,11 +1,19 @@
+import { existsSync, realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { isAbsolute, resolve } from 'node:path';
-import { spawn } from 'node:child_process';
+import { isAbsolute, resolve, sep } from 'node:path';
+import { spawn, type ChildProcess } from 'node:child_process';
 import type { ProjectData } from '$lib/types';
 import { EMPTY_PROJECT_DATA } from '$lib/data-empty';
 
-const DEFAULT_PROJECT_PATH = '/Users/jonathangadeaharder/projects/phd/lean-runtime-analysis';
+const PROJECT_MARKERS = ['lakefile.lean', 'mathprover.toml'];
+
+export class ProjectRootError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ProjectRootError';
+  }
+}
 
 export function expandHome(p: string): string {
   if (p.startsWith('~/')) return resolve(homedir(), p.slice(2));
@@ -13,9 +21,70 @@ export function expandHome(p: string): string {
   return p;
 }
 
+function realpathSafe(p: string): string {
+  try {
+    return realpathSync(p);
+  } catch {
+    return resolve(p);
+  }
+}
+
+function defaultAllowedRoots(): string[] {
+  const roots = new Set<string>();
+  const add = (p: string) => roots.add(realpathSafe(expandHome(p)));
+
+  add(process.cwd());
+  add(resolve(process.cwd(), '..'));
+  if (process.env.MATHPROVER_PROJECT_PATH) {
+    add(process.env.MATHPROVER_PROJECT_PATH);
+  }
+  add('~/projects');
+  add('~/Documents/projects');
+
+  return [...roots];
+}
+
+function allowedRoots(): string[] {
+  const env = process.env.MATHPROVER_ALLOWED_ROOTS;
+  if (env) {
+    return env
+      .split(':')
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .map((entry) => realpathSafe(expandHome(entry)));
+  }
+  return defaultAllowedRoots();
+}
+
+function isUnderRoot(candidate: string, root: string): boolean {
+  return candidate === root || candidate.startsWith(root + sep);
+}
+
+function hasProjectMarker(root: string): boolean {
+  return PROJECT_MARKERS.some((marker) => existsSync(resolve(root, marker)));
+}
+
 export function resolveProjectRoot(raw?: string | null): string {
-  const requested = raw ?? process.env.MATHPROVER_PROJECT_PATH ?? DEFAULT_PROJECT_PATH;
-  return isAbsolute(requested) ? requested : resolve(process.cwd(), expandHome(requested));
+  const requested = (raw?.trim() || process.env.MATHPROVER_PROJECT_PATH || process.cwd()).trim();
+  const normalized = requested.replace(/\\/g, '/');
+  if (!requested || requested.includes('\0') || normalized.split('/').includes('..')) {
+    throw new ProjectRootError('Invalid project path');
+  }
+
+  const resolved = isAbsolute(requested)
+    ? resolve(requested)
+    : resolve(process.cwd(), expandHome(requested));
+  const canonical = realpathSafe(resolved);
+  const permitted = allowedRoots();
+
+  if (!permitted.some((root) => isUnderRoot(canonical, root))) {
+    throw new ProjectRootError(`Project path is not under allowed roots: ${canonical}`);
+  }
+  if (!hasProjectMarker(canonical)) {
+    throw new ProjectRootError(`Not a Lean/MathProver project (missing lakefile.lean): ${canonical}`);
+  }
+
+  return canonical;
 }
 
 export function graphPath(root: string): string {
@@ -45,47 +114,65 @@ export async function enrichGraph(root: string): Promise<ProjectData> {
 }
 
 export function pythonBin(root: string): string {
-  const venv = resolve(root, 'agents/.venv/bin/python');
-  return venv;
+  return resolve(root, 'agents/.venv/bin/python');
+}
+
+function attachSpawnHandlers<T>(
+  proc: ChildProcess,
+  onClose: (code: number | null) => T,
+  onFailure: (message: string) => T,
+): Promise<T> {
+  return new Promise((resolvePromise) => {
+    proc.on('error', (err) => resolvePromise(onFailure(err.message)));
+    proc.on('close', (code) => resolvePromise(onClose(code)));
+  });
 }
 
 export function runPythonJson<T>(root: string, args: string[]): Promise<T | null> {
-  return new Promise((resolvePromise) => {
-    const proc = spawn(pythonBin(root), args, {
-      cwd: root,
-      env: { ...process.env },
-    });
-    let out = '';
-    let err = '';
-    proc.stdout.on('data', (d) => (out += d.toString()));
-    proc.stderr.on('data', (d) => (err += d.toString()));
-    proc.on('close', (code) => {
+  const proc = spawn(pythonBin(root), args, {
+    cwd: root,
+    env: { ...process.env },
+  });
+  let out = '';
+  let err = '';
+  proc.stdout.on('data', (d) => (out += d.toString()));
+  proc.stderr.on('data', (d) => (err += d.toString()));
+
+  return attachSpawnHandlers(
+    proc,
+    (code) => {
       if (code !== 0 || !out.trim()) {
         if (err) console.error('[python]', err.trim());
-        resolvePromise(null);
-        return;
+        return null;
       }
       try {
-        resolvePromise(JSON.parse(out) as T);
+        return JSON.parse(out) as T;
       } catch {
-        resolvePromise(null);
+        return null;
       }
-    });
-  });
+    },
+    (message) => {
+      console.error('[python spawn]', message);
+      return null;
+    },
+  );
 }
 
 export function runPythonText(root: string, args: string[]): Promise<{ code: number; out: string; err: string }> {
-  return new Promise((resolvePromise) => {
-    const proc = spawn(pythonBin(root), args, {
-      cwd: root,
-      env: { ...process.env },
-    });
-    let out = '';
-    let err = '';
-    proc.stdout.on('data', (d) => (out += d.toString()));
-    proc.stderr.on('data', (d) => (err += d.toString()));
-    proc.on('close', (code) => resolvePromise({ code: code ?? 1, out, err }));
+  const proc = spawn(pythonBin(root), args, {
+    cwd: root,
+    env: { ...process.env },
   });
+  let out = '';
+  let err = '';
+  proc.stdout.on('data', (d) => (out += d.toString()));
+  proc.stderr.on('data', (d) => (err += d.toString()));
+
+  return attachSpawnHandlers(
+    proc,
+    (code) => ({ code: code ?? 1, out, err }),
+    (message) => ({ code: 1, out: '', err: message }),
+  );
 }
 
 export function utcRunId(): string {
@@ -105,4 +192,8 @@ export function utcRunId(): string {
 
 export function projectQuery(url: URL): string {
   return url.searchParams.get('project') ?? '';
+}
+
+export function resolveRootFromRequest(url: URL): string {
+  return resolveProjectRoot(url.searchParams.get('project'));
 }

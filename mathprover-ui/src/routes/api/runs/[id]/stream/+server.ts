@@ -1,8 +1,15 @@
 import type { RequestHandler } from './$types';
-import { readLogTail, readRuns, resolveRootFromRequest } from '$lib/server/dispatch';
+import { ProjectRootError, readLogTail, readRuns, resolveRootFromRequest } from '$lib/server/dispatch';
 
 export const GET: RequestHandler = async ({ url, params }) => {
-  const root = resolveRootFromRequest(url);
+  let root: string;
+  try {
+    root = resolveRootFromRequest(url);
+  } catch (err) {
+    if (err instanceof ProjectRootError) return new Response(err.message, { status: 400 });
+    throw err;
+  }
+
   const runs = await readRuns(root);
   const run = runs.find((r) => r.id === params.id);
   if (!run) return new Response('run not found', { status: 404 });

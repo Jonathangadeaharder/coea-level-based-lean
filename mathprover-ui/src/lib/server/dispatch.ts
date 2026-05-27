@@ -1,32 +1,44 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { resolve } from 'node:path';
+import { isAbsolute, resolve, sep } from 'node:path';
 import type { RunRecord } from '$lib/types';
-import { pythonBin, resolveProjectRoot, utcRunId } from './project';
+import { pythonBin, utcRunId } from './project';
 
 const activeProcesses = new Map<string, ChildProcess>();
+
+function attachSpawnHandlers<T>(
+  proc: ChildProcess,
+  onClose: () => T,
+  onFailure: () => T,
+): Promise<T> {
+  return new Promise((resolvePromise) => {
+    proc.on('error', () => resolvePromise(onFailure()));
+    proc.on('close', () => resolvePromise(onClose()));
+  });
+}
 
 export async function previewRoute(
   root: string,
   nodeId: string,
   prover: string,
 ): Promise<{ folder: string; prover: string; reason: string } | null> {
-  const { spawn: sp } = await import('node:child_process');
-  return new Promise((resolvePromise) => {
-    const proc = sp(pythonBin(root), ['agents/preview.py', nodeId, prover], {
-      cwd: root,
-      env: { ...process.env },
-    });
-    let out = '';
-    proc.stdout.on('data', (d) => (out += d.toString()));
-    proc.on('close', (code) => {
-      if (code !== 0) return resolvePromise(null);
-      try {
-        resolvePromise(JSON.parse(out));
-      } catch {
-        resolvePromise(null);
-      }
-    });
+  const proc = spawn(pythonBin(root), ['agents/preview.py', nodeId, prover], {
+    cwd: root,
+    env: { ...process.env },
   });
+  let out = '';
+  proc.stdout.on('data', (d) => (out += d.toString()));
+
+  return attachSpawnHandlers(
+    proc,
+    () => {
+      try {
+        return JSON.parse(out) as { folder: string; prover: string; reason: string };
+      } catch {
+        return null;
+      }
+    },
+    () => null,
+  );
 }
 
 export function spawnDispatch(opts: {
@@ -56,6 +68,7 @@ export function spawnDispatch(opts: {
   });
 
   activeProcesses.set(runId, proc);
+  proc.on('error', () => activeProcesses.delete(runId));
   proc.on('close', () => activeProcesses.delete(runId));
 
   return { runId, pid: proc.pid ?? 0 };
@@ -88,9 +101,24 @@ export async function readRuns(root: string): Promise<RunRecord[]> {
   }
 }
 
+export function resolveLogPath(root: string, logPath: string): string {
+  const normalized = logPath.replace(/\\/g, '/');
+  if (isAbsolute(logPath) || normalized.split('/').includes('..')) {
+    throw new Error('Invalid log path');
+  }
+
+  const rootReal = resolve(root);
+  const full = resolve(rootReal, logPath);
+  const attemptsRoot = resolve(rootReal, '.mathprover/attempts');
+  if (!full.startsWith(attemptsRoot + sep) && full !== attemptsRoot) {
+    throw new Error('Log path must stay under .mathprover/attempts');
+  }
+  return full;
+}
+
 export async function readLogTail(root: string, logPath: string, offset = 0): Promise<{ text: string; size: number }> {
   const { readFile, stat } = await import('node:fs/promises');
-  const full = resolve(root, logPath);
+  const full = resolveLogPath(root, logPath);
   try {
     const st = await stat(full);
     const buf = await readFile(full);
@@ -101,19 +129,31 @@ export async function readLogTail(root: string, logPath: string, offset = 0): Pr
   }
 }
 
+function pidAlive(pid: number): boolean {
+  if (!Number.isFinite(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function goedelLockStatus(root: string): Promise<{ locked: boolean; pid?: string }> {
-  const { readFile, access } = await import('node:fs/promises');
+  const { readFile, unlink } = await import('node:fs/promises');
   const lockPath = resolve(root, '.mathprover/locks/goedel.lock');
   try {
-    await access(lockPath);
     const content = await readFile(lockPath, 'utf-8');
     const m = content.match(/pid=(\d+)/);
-    return { locked: true, pid: m?.[1] };
+    const pid = m ? Number(m[1]) : NaN;
+    if (!pidAlive(pid)) {
+      await unlink(lockPath).catch(() => {});
+      return { locked: false };
+    }
+    return { locked: true, pid: String(pid) };
   } catch {
     return { locked: false };
   }
 }
 
-export function resolveRootFromRequest(url: URL): string {
-  return resolveProjectRoot(url.searchParams.get('project'));
-}
+export { ProjectRootError, resolveRootFromRequest } from './project';
