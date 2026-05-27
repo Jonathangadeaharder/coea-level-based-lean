@@ -56,13 +56,15 @@ def run_goedel(
 ) -> RunResult:
     preflight(config, resource_limits)
     runner = _pipeline_runner(config)
-    agents_dir = Path(__file__).resolve().parent
+    agents_dir = Path(__file__).resolve().parents[1]
     work_dir = log_path.parent / "work"
     env = os.environ.copy()
     env["MATHPROVER_AGENTS"] = str(agents_dir)
 
     cmd = [
         str(runner),
+        "--agents-dir",
+        str(agents_dir),
         "--lean-file",
         str(attempt_file),
         "--project-root",
