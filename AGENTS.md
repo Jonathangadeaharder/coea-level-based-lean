@@ -32,10 +32,14 @@ See `openspec/changes/close-six-sorries/tasks.md` for checklist.
 
 ## MathProver workflow
 
-1. Clone [mathprover](https://github.com/VidiomTM/mathprover) and copy `.env.example` → `.env` in **this** repo.
-2. `cd "$MATHPROVER_HOME/agents" && uv sync`
-3. `python3 scripts/reindex_graph.py` — writes `.mathprover/graph.json` (gitignored)
-4. UI: `cd "$MATHPROVER_HOME/mathprover-ui" && pnpm dev` → `/workspace?project=$PWD`
+Clone [mathprover](https://github.com/VidiomTM/mathprover) as sibling `../mathprover` or set `MATHPROVER_HOME`.
+
+```bash
+cp .env.example .env && source .env   # once
+make agents-sync && make reindex && make ui
+make dispatch NODE=L661_coea_sel_measure_prob
+make dashboard
+```
 
 Full guide: [docs/mathprover.md](docs/mathprover.md). Decorator syntax: [docs/DECORATORS.md](docs/DECORATORS.md).
 
@@ -44,9 +48,7 @@ Full guide: [docs/mathprover.md](docs/mathprover.md). Decorator syntax: [docs/DE
 - **Proof work:** Read `proofs/<folder>/paper_source.md` first; translate, don't invent.
 - **No new sorry** in main Lean tree; split into `subproofs/` instead.
 - **Verify:** `lake build LBTCoupling` after every merge.
-- **Dispatch:** `uv run --directory "$MATHPROVER_HOME/agents" python dispatch.py --root "$(pwd)" --node <folder> --prover auto`
-- **Dashboard:** `bash proofs/scripts/dashboard.sh`
-- **Graph reindex:** `python3 scripts/reindex_graph.py`
+- **Makefile:** `make reindex`, `make ui`, `make dispatch NODE=...`, `make dashboard`
 
 ## Config
 

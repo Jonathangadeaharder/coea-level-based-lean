@@ -38,25 +38,15 @@ lake build LBTCoupling
    source .env
    ```
 
-3. Install MathProver agents once:
+3. One-liners via Makefile:
 
    ```bash
-   cd "$MATHPROVER_HOME/agents" && uv sync
+   make agents-sync    # once
+   make reindex        # graph.json
+   make ui             # workbench
+   make dispatch NODE=L661_coea_sel_measure_prob
+   make dashboard      # terminal status
    ```
-
-4. Generate the proof graph (local, gitignored):
-
-   ```bash
-   python3 scripts/reindex_graph.py
-   ```
-
-5. Open the workbench:
-
-   ```bash
-   cd "$MATHPROVER_HOME/mathprover-ui" && pnpm install && pnpm dev
-   ```
-
-   Visit `http://localhost:5173/workspace?project=$PWD` (from this repo root).
 
 See [docs/mathprover.md](docs/mathprover.md) for dispatch, reindex, and graph conventions.
 
