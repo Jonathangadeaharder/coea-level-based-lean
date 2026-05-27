@@ -17,6 +17,7 @@ if str(AGENTS_DIR) not in sys.path:
 from backends.aristotle import run_aristotle  # noqa: E402
 from backends.goedel import run_goedel  # noqa: E402
 from config import load_config  # noqa: E402
+from resource_guard import ResourceGuardError, ResourceLimits, goedel_exclusive_lock  # noqa: E402
 from router import select_prover  # noqa: E402
 
 
@@ -136,12 +137,23 @@ def dispatch(
     print(f"log={log_path}")
 
     if prover_name == "goedel":
-        result = run_goedel(
-            config=prover_cfg,
-            attempt_file=attempt_file,
-            log_path=log_path,
-            max_tokens=max_tokens,
+        limits = ResourceLimits(
+            max_concurrent_goedel=config.resources.max_concurrent_goedel,
+            min_free_memory_gib=config.resources.min_free_memory_gib,
         )
+        try:
+            with goedel_exclusive_lock(root, limits):
+                result = run_goedel(
+                    config=prover_cfg,
+                    attempt_file=attempt_file,
+                    proof_dir=proof_dir,
+                    project_root=root,
+                    log_path=log_path,
+                    max_tokens=max_tokens,
+                    resource_limits=limits,
+                )
+        except ResourceGuardError as exc:
+            raise RuntimeError(str(exc)) from exc
     elif prover_name == "aristotle":
         result = run_aristotle(
             config=prover_cfg,

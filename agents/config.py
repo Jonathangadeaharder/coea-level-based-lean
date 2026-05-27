@@ -18,8 +18,15 @@ class ProverConfig:
     name: str
     type: str
     command: str
-    max_attempts: int = 8
-    max_tokens: int = 8192
+    max_attempts: int = 4
+    max_tokens: int = 32768
+    correction_rounds: int = 2
+    initial_max_tokens: int = 28000
+    correction_max_tokens: int = 8000
+    temperature: float = 1.0
+    top_p: float = 0.95
+    poll_interval_seconds: int = 30
+    max_wait_minutes: int = 120
     requires_env: list[str] = field(default_factory=list)
 
 
@@ -35,10 +42,18 @@ class RoutingConfig:
 
 
 @dataclass
+class ResourceLimitsConfig:
+    max_concurrent_goedel: int = 1
+    min_free_memory_gib: float = 12.0
+    forbid_parallel_dispatch: bool = True
+
+
+@dataclass
 class MathProverConfig:
     project_root: Path
     provers: dict[str, ProverConfig]
     routing: RoutingConfig
+    resources: ResourceLimitsConfig
 
 
 def load_config(project_root: Path | None = None) -> MathProverConfig:
@@ -56,8 +71,15 @@ def load_config(project_root: Path | None = None) -> MathProverConfig:
             name=name,
             type=block["type"],
             command=block["command"],
-            max_attempts=int(block.get("max_attempts", 8)),
-            max_tokens=int(block.get("max_tokens", 8192)),
+            max_attempts=int(block.get("max_attempts", 4)),
+            max_tokens=int(block.get("max_tokens", 32768)),
+            correction_rounds=int(block.get("correction_rounds", 2)),
+            initial_max_tokens=int(block.get("initial_max_tokens", 28000)),
+            correction_max_tokens=int(block.get("correction_max_tokens", 8000)),
+            temperature=float(block.get("temperature", 1.0)),
+            top_p=float(block.get("top_p", 0.95)),
+            poll_interval_seconds=int(block.get("poll_interval_seconds", 30)),
+            max_wait_minutes=int(block.get("max_wait_minutes", 120)),
             requires_env=list(block.get("requires_env", [])),
         )
 
@@ -71,4 +93,15 @@ def load_config(project_root: Path | None = None) -> MathProverConfig:
         second_wave=list(routing_raw.get("second_wave", [])),
         capstone=list(routing_raw.get("capstone", [])),
     )
-    return MathProverConfig(project_root=root, provers=provers, routing=routing)
+    resources_raw = raw.get("resources", {})
+    resources = ResourceLimitsConfig(
+        max_concurrent_goedel=int(resources_raw.get("max_concurrent_goedel", 1)),
+        min_free_memory_gib=float(resources_raw.get("min_free_memory_gib", 12.0)),
+        forbid_parallel_dispatch=bool(resources_raw.get("forbid_parallel_dispatch", True)),
+    )
+    return MathProverConfig(
+        project_root=root,
+        provers=provers,
+        routing=routing,
+        resources=resources,
+    )
