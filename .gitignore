@@ -20,6 +20,9 @@ Thumbs.db
 
 # Secrets and agent run artifacts
 .env
-.mathprover/
+!.env.example
+.mathprover/*
+!.mathprover/README.md
+!.mathprover/meta.json.example
 scripts/__pycache__/
 .claude/

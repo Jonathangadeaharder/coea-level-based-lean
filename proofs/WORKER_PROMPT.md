@@ -1,7 +1,7 @@
 # Worker prompt template — drop into Agent subagent_type=general-purpose
 
 You are closing one `sorry` in `LBTCoupling.lean` inside the Lean repo at
-`/Users/jonathangadeaharder/projects/phd/lean-runtime-analysis/`.
+`$REPO_ROOT` (the git root containing `lakefile.lean`).
 
 **Your assignment**: `<ASSIGNMENT_FOLDER>` (e.g. `proofs/L703_mutation_prob_lower_bound/`)
 
@@ -22,7 +22,7 @@ You are closing one `sorry` in `LBTCoupling.lean` inside the Lean repo at
 ```
 1. cd <ASSIGNMENT_FOLDER>
 2. Read signature.lean, paper_source.md, status.md.
-3. Read the relevant block in /Users/jonathangadeaharder/projects/phd/lean-runtime-analysis/LBTCoupling.lean
+3. Read the relevant block in $REPO_ROOT/LBTCoupling.lean
    (line range is in the signature).
 4. Draft proof in attempt.lean.
 5. Iterate against `lake build LBTCoupling`.

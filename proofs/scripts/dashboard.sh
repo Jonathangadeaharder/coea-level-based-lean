@@ -26,10 +26,19 @@ grep -rn '^axiom \|^private axiom ' --include='*.lean' --exclude-dir='.lake' --e
 
 echo
 echo "=== Frontier (state=todo, no unmet deps) ==="
-# Naive: anything with state=todo
 while IFS= read -r status_md; do
   state=$(grep '^state:' "$status_md" | sed 's/state: //')
   if [ "$state" = "todo" ]; then
     dirname "$status_md" | sed 's|^./||'
   fi
 done < <(find proofs -name status.md | sort)
+
+echo
+echo "=== MathProver graph ==="
+if [ -n "${MATHPROVER_HOME:-}" ] && [ -f scripts/reindex_graph.py ]; then
+  echo "Run: python3 scripts/reindex_graph.py"
+elif [ -f .mathprover/graph.json ]; then
+  echo "Graph: .mathprover/graph.json ($(python3 -c 'import json; print(len(json.load(open(".mathprover/graph.json"))["nodes"]))' 2>/dev/null || echo '?') nodes)"
+else
+  echo "No graph yet — set MATHPROVER_HOME and run: python3 scripts/reindex_graph.py"
+fi

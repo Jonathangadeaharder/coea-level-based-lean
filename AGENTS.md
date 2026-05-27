@@ -23,24 +23,31 @@ See `openspec/changes/close-six-sorries/tasks.md` for checklist.
 |------|-------|
 | `openspec/specs/lean-proof-closure/` | Six-sorry DAG, worker contract, merge rules |
 
-## Related repos
+## Related repos (independent)
 
 | Repo | Role |
 |------|------|
-| [VidiomTM/mathprover](https://github.com/VidiomTM/mathprover) | SvelteKit UI, agent dispatch, graph indexing (dev tool) |
-| [VidiomTM/PPSN_FOGA_GECCO](https://github.com/VidiomTM/PPSN_FOGA_GECCO) | Paper drafts and empirical scripts |
+| [VidiomTM/mathprover](https://github.com/VidiomTM/mathprover) | SvelteKit UI, agent dispatch, graph indexing |
+| [VidiomTM/PPSN_FOGA_GECCO](https://github.com/VidiomTM/PPSN_FOGA_GECCO) | Paper drafts, empirical scripts, lean status table |
+
+## MathProver workflow
+
+1. Clone [mathprover](https://github.com/VidiomTM/mathprover) and copy `.env.example` → `.env` in **this** repo.
+2. `cd "$MATHPROVER_HOME/agents" && uv sync`
+3. `python3 scripts/reindex_graph.py` — writes `.mathprover/graph.json` (gitignored)
+4. UI: `cd "$MATHPROVER_HOME/mathprover-ui" && pnpm dev` → `/workspace?project=$PWD`
+
+Full guide: [docs/mathprover.md](docs/mathprover.md). Decorator syntax: [docs/DECORATORS.md](docs/DECORATORS.md).
 
 ## Project conventions
 
 - **Proof work:** Read `proofs/<folder>/paper_source.md` first; translate, don't invent.
 - **No new sorry** in main Lean tree; split into `subproofs/` instead.
 - **Verify:** `lake build LBTCoupling` after every merge.
-- **MathProver dispatch:** clone [mathprover](https://github.com/VidiomTM/mathprover), set `MATHPROVER_HOME`, then `python agents/dispatch.py --root . --node <folder> --prover auto`
-- **MathProver UI:** `MATHPROVER_PROJECT_PATH=$(pwd) pnpm dev` from `mathprover/mathprover-ui`
-- **Graph bootstrap:** `python3 scripts/bootstrap_graph.py` (project-specific DAG seed)
+- **Dispatch:** `uv run --directory "$MATHPROVER_HOME/agents" python dispatch.py --root "$(pwd)" --node <folder> --prover auto`
+- **Dashboard:** `bash proofs/scripts/dashboard.sh`
+- **Graph reindex:** `python3 scripts/reindex_graph.py`
 
 ## Config
 
-Project context and artifact rules: `openspec/config.yaml`
-
-Run `openspec update` after upgrading the global CLI.
+Project context: `openspec/config.yaml`. Run `openspec update` after upgrading the global CLI.

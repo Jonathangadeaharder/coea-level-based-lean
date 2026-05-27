@@ -166,7 +166,11 @@ def main() -> int:
     print(f"[bootstrap_graph] wrote {out} ({len(nodes)} nodes)", file=sys.stderr)
 
     sys.path.insert(0, str(ROOT / "scripts"))
-    from index_runs import merge_attempts_into_graph  # noqa: WPS433
+    try:
+        from mathprover_bridge import merge_attempts_into_graph
+    except FileNotFoundError as exc:
+        print(f"[bootstrap_graph] warning: {exc}", file=sys.stderr)
+        return 0
 
     graph = json.loads(out.read_text(encoding="utf-8"))
     graph = merge_attempts_into_graph(ROOT, graph)

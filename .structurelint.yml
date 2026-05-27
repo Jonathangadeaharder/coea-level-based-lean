@@ -6,6 +6,8 @@ exclude:
   - "**/.DS_Store"
   - proofs/**
   - scripts/**
+  - docs/**
+  - .mathprover/**
   - openspec/**
   - .cursor/**
   - .github/**

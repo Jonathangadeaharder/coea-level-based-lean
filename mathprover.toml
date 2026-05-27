@@ -1,3 +1,7 @@
+# MathProver routing for this Lean project.
+# Tooling lives in https://github.com/VidiomTM/mathprover (set MATHPROVER_HOME).
+# Regenerate graph: python3 scripts/reindex_graph.py
+
 # Goedel 32B 8-bit uses ~35 GiB weights; never run more than one instance locally.
 [resources]
 max_concurrent_goedel = 1

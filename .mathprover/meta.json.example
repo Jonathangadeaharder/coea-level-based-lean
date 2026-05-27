@@ -1,0 +1,32 @@
+{
+  "project": {
+    "name": "lean-runtime-analysis",
+    "paper": "Level-Based Runtime Analysis — LBTCoupling mechanization",
+    "authors": "",
+    "venue": "PPSN / FOGA / GECCO portfolio",
+    "capstone": "L1012_r_local_G2",
+    "lastVerified": ""
+  },
+  "recents": [],
+  "foundations": [
+    {
+      "id": "lbt_external",
+      "name": "Level-Based Theorem (Corus et al. 2018)",
+      "citation": "Corus, Dang, Eremeev, Lehre — IEEE TEVC 22(5):707–719, 2018",
+      "status": "Axiom",
+      "progress": 100,
+      "subgoals": [
+        {
+          "id": "lbt_axiom",
+          "name": "level_based_theorem",
+          "status": "Mechanized",
+          "lean_ref": "LBTCoupling.lean"
+        }
+      ]
+    }
+  ],
+  "paperBlocks": [],
+  "leanBlocks": [],
+  "terms": {},
+  "failures": []
+}
