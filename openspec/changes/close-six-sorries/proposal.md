@@ -17,15 +17,13 @@ Six `sorry` obligations in `LBTCoupling.lean` block the paper's mechanization cl
 
 ### Modified Capabilities
 - `lean-proof-closure`: Update status table as lemmas close; enforce merge order
-- `agent-dispatch`: Operational use for all six folders per routing rules
 
 ## Impact
 
 - `LBTCoupling.lean` — six sorry replacements
 - `proofs/*/` — worker folders, status.md, attempt.lean
 - `.mathprover/graph.json` — node status updates
-- `agents/dispatch.py` — active dispatches
-- `mathprover-ui/` — frontier + graph reflect progress
+- [VidiomTM/mathprover](https://github.com/VidiomTM/mathprover) — dispatch UI reflects progress (external repo)
 
 ## Non-Goals
 

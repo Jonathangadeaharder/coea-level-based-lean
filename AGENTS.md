@@ -22,17 +22,22 @@ See `openspec/changes/close-six-sorries/tasks.md` for checklist.
 | Spec | Scope |
 |------|-------|
 | `openspec/specs/lean-proof-closure/` | Six-sorry DAG, worker contract, merge rules |
-| `openspec/specs/mathprover-workbench/` | SvelteKit UI, graph.json, dispatch API |
-| `openspec/specs/agent-dispatch/` | Goedel/Aristotle routing, run artifacts |
+
+## Related repos
+
+| Repo | Role |
+|------|------|
+| [VidiomTM/mathprover](https://github.com/VidiomTM/mathprover) | SvelteKit UI, agent dispatch, graph indexing (dev tool) |
+| [VidiomTM/PPSN_FOGA_GECCO](https://github.com/VidiomTM/PPSN_FOGA_GECCO) | Paper drafts and empirical scripts |
 
 ## Project conventions
 
 - **Proof work:** Read `proofs/<folder>/paper_source.md` first; translate, don't invent.
 - **No new sorry** in main Lean tree; split into `subproofs/` instead.
 - **Verify:** `lake build LBTCoupling` after every merge.
-- **Dispatch:** `python agents/dispatch.py --node <folder> --prover auto`
-- **UI:** `cd mathprover-ui && npm run dev` → `/workspace`
-- **Graph reindex:** `python3 scripts/bootstrap_graph.py`
+- **MathProver dispatch:** clone [mathprover](https://github.com/VidiomTM/mathprover), set `MATHPROVER_HOME`, then `python agents/dispatch.py --root . --node <folder> --prover auto`
+- **MathProver UI:** `MATHPROVER_PROJECT_PATH=$(pwd) pnpm dev` from `mathprover/mathprover-ui`
+- **Graph bootstrap:** `python3 scripts/bootstrap_graph.py` (project-specific DAG seed)
 
 ## Config
 

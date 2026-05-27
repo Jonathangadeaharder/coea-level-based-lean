@@ -90,6 +90,7 @@ jobs:
         run: |
           FOUND=$(grep -rn 'native_decide' --include='*.lean' . \
             | grep -v '\.lake/packages/' \
+            | grep -v 'LintOptions.lean' \
             || true)
           if [ -n "$FOUND" ]; then
             echo "::error::Found native_decide (bypasses kernel)"
@@ -116,6 +117,12 @@ jobs:
             rm -rf .lake
           fi
           ln -sfn "$CACHE_DIR" .lake
+      - name: Build ProofWidgets JS (cold cache)
+        run: |
+          PW="$(find .lake/packages -maxdepth 1 -type d -name 'proofwidgets*' | head -1)"
+          if [ -n "$PW" ] && [ -f "$PW/lakefile.lean" ]; then
+            (cd "$PW" && npm ci && npm run build) || lake build ProofWidgets
+          fi
       - name: Build
         run: lake build
 

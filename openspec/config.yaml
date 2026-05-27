@@ -7,8 +7,7 @@ context: |
   Tech stack:
   - Lean 4.28, Lake, Mathlib 4.28
   - Main file: LBTCoupling.lean (selection/mutation coupling lemmas)
-  - Python agents: Goedel-Prover-V2 (local MLX 32B) + Aristotle (cloud)
-  - MathProver UI: SvelteKit 5 in mathprover-ui/
+  - MathProver (external): https://github.com/VidiomTM/mathprover — UI + Goedel/Aristotle dispatch
   - Spec/workflow: OpenSpec (this repo)
 
   Hard rules:
@@ -21,8 +20,7 @@ context: |
   - proofs/PLAN.md — worker DAG (mirrors openspec/changes/close-six-sorries/)
   - proofs/<folder>/ — attempt.lean, paper_source.md, status.md per lemma
   - .mathprover/graph.json — MathProver DAG (bootstrap via scripts/bootstrap_graph.py)
-  - agents/dispatch.py — prover routing (mathprover.toml)
-  - mathprover.toml — Goedel leaves, Aristotle capstone/escalation
+  - mathprover.toml — Goedel leaves, Aristotle capstone/escalation (consumed by MathProver)
 
   Verification: lake build LBTCoupling after every merge.
 
@@ -33,7 +31,7 @@ rules:
     - Link to proofs/<folder>/ when discussing a sorry
   design:
     - Prefer Mathlib lemmas over custom axioms
-    - Document prover routing (Goedel vs Aristotle) when touching agents/
+    - Document prover routing (Goedel vs Aristotle) when touching mathprover.toml
   tasks:
     - One task per proof folder or merge step
     - Mark L703 done; frontier is L661 + L669
