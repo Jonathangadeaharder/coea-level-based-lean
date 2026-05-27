@@ -18,6 +18,8 @@ if [[ -n "$WIDGET" && -f "$WIDGET/package.json" ]]; then
     fi
     npm run build
   )
+  # Mathlib pins ProofWidgets with errorOnBuild; refresh Lake's widgetJsAll trace.
+  (cd "$PW" && lake build widgetJsAll -KerrorOnBuild=)
 elif [[ -n "$PW" ]]; then
-  lake build ProofWidgets
+  (cd "$PW" && lake build ProofWidgets -KerrorOnBuild=)
 fi
