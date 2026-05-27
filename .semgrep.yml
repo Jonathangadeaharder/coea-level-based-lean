@@ -1,0 +1,58 @@
+rules:
+  - id: lean-sorry-propagated
+    pattern-either:
+      - pattern: sorry
+    path:
+      include:
+        - "*.lean"
+    paths:
+      exclude:
+        - ".lake/**"
+        - "LBTCoupling.lean"
+    message: "sorry found in Lean source (outside LBTCoupling.lean). All proofs must be fully mechanized."
+    languages:
+      - generic
+    severity: ERROR
+
+  - id: lean-axiom-declared
+    pattern-either:
+      - pattern: axiom
+    path:
+      include:
+        - "*.lean"
+    paths:
+      exclude:
+        - ".lake/**"
+    message: "axiom declaration found. Axioms bypass kernel verification."
+    languages:
+      - generic
+    severity: ERROR
+
+  - id: lean-admit-used
+    pattern-either:
+      - pattern: admit
+    path:
+      include:
+        - "*.lean"
+    paths:
+      exclude:
+        - ".lake/**"
+        - "LintOptions.lean"
+    message: "admit found. Proof incomplete."
+    languages:
+      - generic
+    severity: ERROR
+
+  - id: lean-native_decide-bypass
+    pattern-either:
+      - pattern: native_decide
+    path:
+      include:
+        - "*.lean"
+    paths:
+      exclude:
+        - ".lake/**"
+    message: "native_decide bypasses the kernel. Use `decide` instead."
+    languages:
+      - generic
+    severity: WARNING

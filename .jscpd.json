@@ -1,0 +1,17 @@
+{
+  "threshold": 0.2,
+  "minLines": 10,
+  "maxLines": 500,
+  "minTokens": 50,
+  "pattern": "**/*.lean",
+  "ignore": [
+    ".lake/**",
+    "**/*.bak",
+    "**/lean-toolchain",
+    "**/lake-manifest.json",
+    "**/lakefile.lean"
+  ],
+  "ignoreCase": false,
+  "ignoreAnnotations": true,
+  "gitignore": true
+}

@@ -1,29 +1,25 @@
-name: Lean CI
+name: Merge Gate
 
 on:
   push:
-    branches:
-      - master
-      - peer-review-fixes
-      - 'epic/**'
-  pull_request:
     branches: [master]
 
-jobs:
-  build-and-verify:
-    runs-on: ["self-hosted", "lean", "macos"]
-    name: Build & Verify Formalization
-    timeout-minutes: 25
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
+  format:
+    runs-on: ["self-hosted", "macos", "arm64", "VidiomTM"]
+    name: Format Check
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
       - name: Install Elan
         run: |
           which elan 2>/dev/null || { curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none; }
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
-
-      - name: Symlink .lake to persistent cache
+      - name: Symlink .lake cache
         run: |
           CACHE_DIR="$HOME/.cache/lean-runtime-analysis/lake"
           mkdir -p "$CACHE_DIR"
@@ -32,15 +28,32 @@ jobs:
             rm -rf .lake
           fi
           ln -sfn "$CACHE_DIR" .lake
+      - name: Check formatting
+        run: lake fmt --check
 
-      - name: Build
-        run: lake build
-
-      - name: Check for sorry
+  lint:
+    runs-on: ["self-hosted", "macos", "arm64", "VidiomTM"]
+    name: Lint
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Elan
         run: |
-          echo "::group::Searching for sorry in Lean sources"
-          # LBTCoupling.lean has documented deferred proofs (LBT, selection amplification, G2).
-          # These are tracked as known gaps — see Mechanization Boundary section in that file.
+          which elan 2>/dev/null || { curl -sSfL https://raw.githubusercontent.com/leanprover/lean/master/elan-init.sh | sh -s -- -y --default-toolchain none; }
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - name: Symlink .lake cache
+        run: |
+          CACHE_DIR="$HOME/.cache/lean-runtime-analysis/lake"
+          mkdir -p "$CACHE_DIR"
+          if [ -d .lake ] && [ ! -L .lake ]; then
+            rsync -a .lake/ "$CACHE_DIR/" 2>/dev/null || true
+            rm -rf .lake
+          fi
+          ln -sfn "$CACHE_DIR" .lake
+      - name: Run lint
+        run: lake lint
+      - name: Check for sorry (outside LBTCoupling.lean)
+        run: |
           FOUND=$(grep -rn 'sorry' --include='*.lean' . \
             | grep -v '\.lake/packages/' \
             | grep -v '^Binary' \
@@ -51,62 +64,84 @@ jobs:
             echo "$FOUND"
             exit 1
           fi
-
-          # Count deferred proofs in LBTCoupling.lean for the summary
-          LBT_SORRY=$(grep -c 'sorry' LBTCoupling.lean 2>/dev/null || echo "0")
-          echo "LBTCoupling.lean deferred proofs: ${LBT_SORRY} (known gaps, not enforced)"
-          echo "No sorry found in other Lean sources."
-          echo "::endgroup::"
-
       - name: Check for axiom declarations
         run: |
-          echo "::group::Searching for axiom declarations"
           FOUND=$(grep -rnE '^\s*(private\s+|protected\s+|noncomputable\s+)*axiom\b' --include='*.lean' . \
             | grep -v '\.lake/packages/' \
             || true)
           if [ -n "$FOUND" ]; then
-            echo "::error::Found axiom declarations in Lean sources"
+            echo "::error::Found axiom declarations"
             echo "$FOUND"
             exit 1
           fi
-          echo "No axiom declarations found."
-          echo "::endgroup::"
-
       - name: Check for admit
         run: |
-          echo "::group::Searching for admit"
           FOUND=$(grep -rn 'admit' --include='*.lean' . \
             | grep -v '\.lake/packages/' \
             | grep -v 'sorry_admit' \
             | grep -v 'LintOptions.lean' \
             || true)
           if [ -n "$FOUND" ]; then
-            echo "::error::Found admit in Lean sources"
+            echo "::error::Found admit"
             echo "$FOUND"
             exit 1
           fi
-          echo "No admit found."
-          echo "::endgroup::"
-
       - name: Check for native_decide
         run: |
-          echo "::group::Searching for native_decide"
           FOUND=$(grep -rn 'native_decide' --include='*.lean' . \
             | grep -v '\.lake/packages/' \
             || true)
           if [ -n "$FOUND" ]; then
-            echo "::error::Found native_decide in Lean sources (bypasses kernel — use decide instead)"
+            echo "::error::Found native_decide (bypasses kernel)"
             echo "$FOUND"
             exit 1
           fi
-          echo "No native_decide found."
-          echo "::endgroup::"
 
+  build:
+    runs-on: ["self-hosted", "macos", "arm64", "VidiomTM"]
+    name: Build & Typecheck
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Elan
+        run: |
+          which elan 2>/dev/null || { curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none; }
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - name: Symlink .lake cache
+        run: |
+          CACHE_DIR="$HOME/.cache/lean-runtime-analysis/lake"
+          mkdir -p "$CACHE_DIR"
+          if [ -d .lake ] && [ ! -L .lake ]; then
+            rsync -a .lake/ "$CACHE_DIR/" 2>/dev/null || true
+            rm -rf .lake
+          fi
+          ln -sfn "$CACHE_DIR" .lake
+      - name: Build
+        run: lake build
+
+  verification:
+    runs-on: ["self-hosted", "macos", "arm64", "VidiomTM"]
+    name: Mechanization Audit
+    timeout-minutes: 15
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Elan
+        run: |
+          which elan 2>/dev/null || { curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none; }
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - name: Symlink .lake cache
+        run: |
+          CACHE_DIR="$HOME/.cache/lean-runtime-analysis/lake"
+          mkdir -p "$CACHE_DIR"
+          if [ -d .lake ] && [ ! -L .lake ]; then
+            rsync -a .lake/ "$CACHE_DIR/" 2>/dev/null || true
+            rm -rf .lake
+          fi
+          ln -sfn "$CACHE_DIR" .lake
       - name: Mechanization completeness audit
         run: |
-          echo "::group::Mechanization completeness audit"
           ERRORS=0
-
           check_theorem() {
             local file="$1" name="$2" label="$3"
             if grep -qE "^[[:space:]]*(private[[:space:]]+|protected[[:space:]]+|noncomputable[[:space:]]+)*theorem[[:space:]]+${name}\\b" "$file"; then
@@ -116,7 +151,6 @@ jobs:
               ERRORS=$((ERRORS + 1))
             fi
           }
-
           check_no_stub() {
             local file="$1" pattern="$2" label="$3"
             if grep -qF "$pattern" "$file"; then
@@ -127,7 +161,6 @@ jobs:
             fi
           }
 
-          echo ""
           echo "=== Fully mechanized (verified present) ==="
           check_theorem LeCamLowerBound.lean tight_sample_lower_bound "Thm 4 (Le Cam)"
           check_theorem LeCamLowerBound.lean hellingerSq_uniform_shift "Thm 4 (H² shift)"
@@ -141,38 +174,26 @@ jobs:
           check_theorem RLocalGames.lean r_local_alignment "Thm 7 (r-local alignment)"
           check_theorem DriftTheorems/NegativeDrift.lean negative_drift_theorem "NDT (abstract)"
 
-          echo ""
           echo "=== Required (must be fully mechanized) ==="
           check_theorem RLocalGames.lean r_local_tightness_all_pairs_misranked "Prop 1 (cyclic adversarial)"
           check_no_stub RLocalGames.lean "Uses a trivial zero-game" "Prop 1 (stub check)"
 
-          echo ""
-          echo "=== Skipped (known gaps — not enforced) ==="
-          echo "  ⊘ Thm 9: ND coupling → E[T_X] = 2^Ω(n)"
-          echo "  ⊘ Thm 8: LBT coupling → E[T_X] = O(n log n)"
-
-          echo ""
           if [ $ERRORS -gt 0 ]; then
             echo "::error::$ERRORS mechanization target(s) missing or incomplete"
             exit 1
           fi
           echo "All required mechanization targets present."
-          echo "::endgroup::"
 
-      - name: Summary
-        run: |
-          echo "## Formalization Status" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          LEAN_FILES=$(find . -name '*.lean' -not -path './.lake/*' | wc -l)
-          TOTAL_LINES=$(find . -name '*.lean' -not -path './.lake/*' -exec cat {} + | wc -l)
-          SORRY_COUNT=$(grep -rn 'sorry' --include='*.lean' . | grep -v '\.lake/packages/' | grep -v '^Binary' | wc -l || true)
-          AXIOM_COUNT=$(grep -rnE '^\s*(private\s+|protected\s+|noncomputable\s+)*axiom\b' --include='*.lean' . | grep -v '\.lake/packages/' | wc -l || true)
-          ADMIT_COUNT=$(grep -rn 'admit' --include='*.lean' . | grep -v '\.lake/packages/' | grep -v 'sorry_admit' | grep -v 'LintOptions.lean' | wc -l || true)
-          NATIVE_DECIDE_COUNT=$(grep -rn 'native_decide' --include='*.lean' . | grep -v '\.lake/packages/' | wc -l || true)
-          echo "- **Lean source files:** ${LEAN_FILES}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Total lines:** ${TOTAL_LINES}" >> $GITHUB_STEP_SUMMARY
-          echo "- **sorry count:** ${SORRY_COUNT} (3 documented deferred proofs in LBTCoupling.lean)" >> $GITHUB_STEP_SUMMARY
-          echo "- **axiom count:** ${AXIOM_COUNT}" >> $GITHUB_STEP_SUMMARY
-          echo "- **admit count:** ${ADMIT_COUNT}" >> $GITHUB_STEP_SUMMARY
-          echo "- **native_decide count:** ${NATIVE_DECIDE_COUNT}" >> $GITHUB_STEP_SUMMARY
-          echo "- **required theorem:** Proposition 1 (r_local_tightness_all_pairs_misranked)" >> $GITHUB_STEP_SUMMARY
+  codeql:
+    runs-on: ubuntu-latest
+    name: CodeQL Analysis
+    permissions:
+      security-events: write
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v3

@@ -1,0 +1,216 @@
+name: PR Quality Gate
+
+on:
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    if: github.event.pull_request == null || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ["self-hosted", "macos", "arm64", "VidiomTM"]
+    name: Format Check
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Elan
+        run: |
+          which elan 2>/dev/null || { curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none; }
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - name: Symlink .lake cache
+        run: |
+          CACHE_DIR="$HOME/.cache/lean-runtime-analysis/lake"
+          mkdir -p "$CACHE_DIR"
+          if [ -d .lake ] && [ ! -L .lake ]; then
+            rsync -a .lake/ "$CACHE_DIR/" 2>/dev/null || true
+            rm -rf .lake
+          fi
+          ln -sfn "$CACHE_DIR" .lake
+      - name: Check formatting
+        run: lake fmt --check
+
+  lint:
+    if: github.event.pull_request == null || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ["self-hosted", "macos", "arm64", "VidiomTM"]
+    name: Lint
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Elan
+        run: |
+          which elan 2>/dev/null || { curl -sSfL https://raw.githubusercontent.com/leanprover/lean/master/elan-init.sh | sh -s -- -y --default-toolchain none; }
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - name: Symlink .lake cache
+        run: |
+          CACHE_DIR="$HOME/.cache/lean-runtime-analysis/lake"
+          mkdir -p "$CACHE_DIR"
+          if [ -d .lake ] && [ ! -L .lake ]; then
+            rsync -a .lake/ "$CACHE_DIR/" 2>/dev/null || true
+            rm -rf .lake
+          fi
+          ln -sfn "$CACHE_DIR" .lake
+      - name: Run lint
+        run: lake lint
+      - name: Check for sorry (outside LBTCoupling.lean)
+        run: |
+          FOUND=$(grep -rn 'sorry' --include='*.lean' . \
+            | grep -v '\.lake/packages/' \
+            | grep -v '^Binary' \
+            | grep -v 'LBTCoupling.lean' \
+            || true)
+          if [ -n "$FOUND" ]; then
+            echo "::error::Found sorry in Lean sources (outside LBTCoupling.lean)"
+            echo "$FOUND"
+            exit 1
+          fi
+      - name: Check for axiom declarations
+        run: |
+          FOUND=$(grep -rnE '^\s*(private\s+|protected\s+|noncomputable\s+)*axiom\b' --include='*.lean' . \
+            | grep -v '\.lake/packages/' \
+            || true)
+          if [ -n "$FOUND" ]; then
+            echo "::error::Found axiom declarations"
+            echo "$FOUND"
+            exit 1
+          fi
+      - name: Check for admit
+        run: |
+          FOUND=$(grep -rn 'admit' --include='*.lean' . \
+            | grep -v '\.lake/packages/' \
+            | grep -v 'sorry_admit' \
+            | grep -v 'LintOptions.lean' \
+            || true)
+          if [ -n "$FOUND" ]; then
+            echo "::error::Found admit"
+            echo "$FOUND"
+            exit 1
+          fi
+      - name: Check for native_decide
+        run: |
+          FOUND=$(grep -rn 'native_decide' --include='*.lean' . \
+            | grep -v '\.lake/packages/' \
+            || true)
+          if [ -n "$FOUND" ]; then
+            echo "::error::Found native_decide (bypasses kernel)"
+            echo "$FOUND"
+            exit 1
+          fi
+
+  build:
+    if: github.event.pull_request == null || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ["self-hosted", "macos", "arm64", "VidiomTM"]
+    name: Build & Typecheck
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Elan
+        run: |
+          which elan 2>/dev/null || { curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none; }
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - name: Symlink .lake cache
+        run: |
+          CACHE_DIR="$HOME/.cache/lean-runtime-analysis/lake"
+          mkdir -p "$CACHE_DIR"
+          if [ -d .lake ] && [ ! -L .lake ]; then
+            rsync -a .lake/ "$CACHE_DIR/" 2>/dev/null || true
+            rm -rf .lake
+          fi
+          ln -sfn "$CACHE_DIR" .lake
+      - name: Build
+        run: lake build
+
+  verification:
+    if: github.event.pull_request == null || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ["self-hosted", "macos", "arm64", "VidiomTM"]
+    name: Mechanization Audit
+    timeout-minutes: 15
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Elan
+        run: |
+          which elan 2>/dev/null || { curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none; }
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - name: Symlink .lake cache
+        run: |
+          CACHE_DIR="$HOME/.cache/lean-runtime-analysis/lake"
+          mkdir -p "$CACHE_DIR"
+          if [ -d .lake ] && [ ! -L .lake ]; then
+            rsync -a .lake/ "$CACHE_DIR/" 2>/dev/null || true
+            rm -rf .lake
+          fi
+          ln -sfn "$CACHE_DIR" .lake
+      - uses: actions/checkout@v4
+      - name: Mechanization completeness audit
+        run: |
+          ERRORS=0
+          check_theorem() {
+            local file="$1" name="$2" label="$3"
+            if grep -qE "^[[:space:]]*(private[[:space:]]+|protected[[:space:]]+|noncomputable[[:space:]]+)*theorem[[:space:]]+${name}\\b" "$file"; then
+              echo "  ✓ $label: $name"
+            else
+              echo "::error::$label missing: theorem $name not found in $file"
+              ERRORS=$((ERRORS + 1))
+            fi
+          }
+          check_no_stub() {
+            local file="$1" pattern="$2" label="$3"
+            if grep -qF "$pattern" "$file"; then
+              echo "::error::$label still contains stub: $pattern"
+              ERRORS=$((ERRORS + 1))
+            else
+              echo "  ✓ $label: no stub markers"
+            fi
+          }
+
+          echo "=== Fully mechanized (verified present) ==="
+          check_theorem LeCamLowerBound.lean tight_sample_lower_bound "Thm 4 (Le Cam)"
+          check_theorem LeCamLowerBound.lean hellingerSq_uniform_shift "Thm 4 (H² shift)"
+          check_theorem LeCamLowerBound.lean exists_grid_size "Thm 4 (grid size)"
+          check_theorem WitnessGameDrift.lean C_k_nonneg "Lem 4 (Y-drift)"
+          check_theorem WitnessGameDrift.lean batch_mean_formula "Lem 5 (batch-mean)"
+          check_theorem WitnessGameDrift.lean progression_gap_sum "Lem 5 (progression)"
+          check_theorem WitnessGameDrift.lean regression_gap_sum "Lem 5 (regression)"
+          check_theorem WitnessGameDrift.lean batch_mean_misranking "Prop 3 (misranking)"
+          check_theorem RLocalGames.lean r_local_offset_bound "Lem 3 (r-local offset)"
+          check_theorem RLocalGames.lean r_local_alignment "Thm 7 (r-local alignment)"
+          check_theorem DriftTheorems/NegativeDrift.lean negative_drift_theorem "NDT (abstract)"
+
+          echo "=== Required (must be fully mechanized) ==="
+          check_theorem RLocalGames.lean r_local_tightness_all_pairs_misranked "Prop 1 (cyclic adversarial)"
+          check_no_stub RLocalGames.lean "Uses a trivial zero-game" "Prop 1 (stub check)"
+
+          if [ $ERRORS -gt 0 ]; then
+            echo "::error::$ERRORS mechanization target(s) missing or incomplete"
+            exit 1
+          fi
+          echo "All required mechanization targets present."
+
+  semgrep:
+    if: github.event.pull_request == null || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    name: Semgrep SAST
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: returntocorp/semgrep-action@v1
+        with:
+          config: .semgrep.yml
+
+  codeql:
+    if: github.event.pull_request == null || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    name: CodeQL Analysis
+    permissions:
+      security-events: write
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v3
