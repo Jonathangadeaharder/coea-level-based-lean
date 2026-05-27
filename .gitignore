@@ -20,7 +20,9 @@ Thumbs.db
 
 # Secrets and agent run artifacts
 .env
-.mathprover/attempts/
+.mathprover/
 agents/.venv/
 agents/__pycache__/
 agents/**/__pycache__/
+scripts/__pycache__/
+.claude/
