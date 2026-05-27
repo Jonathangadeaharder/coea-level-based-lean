@@ -1,5 +1,7 @@
 # lean-runtime-analysis — common tasks (requires sibling or env-configured MathProver)
 
+.DEFAULT_GOAL := default
+
 MATHPROVER_HOME ?= $(abspath ../mathprover)
 MATHPROVER_PROJECT_PATH ?= $(CURDIR)
 NODE ?=
@@ -12,9 +14,14 @@ endif
 
 export MATHPROVER_HOME MATHPROVER_PROJECT_PATH
 
-.PHONY: help reindex ui dispatch dashboard build agents-sync meta
+.PHONY: default help reindex ui dispatch dashboard build agents-sync meta
+
+default:
+	@$(MAKE) -C ..
 
 help:
+	@echo "Tip: from phd/ run \`make\` once — Meridian + MathProver + reindex."
+	@echo ""
 	@echo "Targets:"
 	@echo "  make reindex              Regenerate .mathprover/graph.json"
 	@echo "  make ui                   Start MathProver workbench"
