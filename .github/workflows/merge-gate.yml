@@ -108,16 +108,7 @@ jobs:
         run: |
           which elan 2>/dev/null || { curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none; }
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
-      - name: Symlink .lake cache
-        run: |
-          CACHE_DIR="$HOME/.cache/lean-runtime-analysis/lake"
-          mkdir -p "$CACHE_DIR"
-          if [ -d .lake ] && [ ! -L .lake ]; then
-            rsync -a .lake/ "$CACHE_DIR/" 2>/dev/null || true
-            rm -rf .lake
-          fi
-          ln -sfn "$CACHE_DIR" .lake
-      - name: Build ProofWidgets JS (cold cache)
+      - name: Warm Lean cache
         run: bash scripts/ci-build-proofwidgets.sh
       - name: Build
         run: lake build
